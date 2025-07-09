@@ -62,24 +62,10 @@ class _SplashScreenState extends State<SplashScreen>
               // Animated Logo
               ScaleTransition(
                 scale: _logoAnimation,
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/icons/smart-farmingLogo.svg', // Replace with your SVG asset
-                    height: 80,
-                    color: Colors.white,
-                  ),
+                child: Image.asset(
+                  "assets/images/smart-farmingLogo.png",
+                  width: 180,
+                  height: 180,
                 ),
               ),
 

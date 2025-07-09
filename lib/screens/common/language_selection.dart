@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
   const LanguageSelectionScreen({super.key});
@@ -163,7 +164,12 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                       onPressed: _selectedLanguage == null
                           ? null
                           : () {
-                              // Navigate to next screen
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      FarmerRegistrationScreen(),
+                                ),
+                              );
                             },
                       child: Text(
                         'Continue',
