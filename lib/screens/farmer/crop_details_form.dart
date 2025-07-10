@@ -39,8 +39,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
   double _latitude = AppConstants.defaultLatitude;
   double _longitude = AppConstants.defaultLongitude;
   List<String> _imagePaths = [];
-  List<String> _imageSources = [];
-  late final ImagePicker _imagePicker;
+
   @override
   void initState() {
     super.initState();
@@ -56,7 +55,6 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       _latitude = widget.crop!.latitude;
       _longitude = widget.crop!.longitude;
       _imagePaths = List.from(widget.crop!.imagePaths);
-      _imagePicker = ImagePicker();
     } else {
       _calculateExpectedHarvestDate();
     }
@@ -1143,7 +1141,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                       size: 18,
                     ),
                     label: Text(
-                      'Add Image (${_imagePaths.length}/${AppConstants.maxCropImages})',
+                      'Add (${_imagePaths.length}/${AppConstants.maxCropImages})',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -1171,8 +1169,8 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                       size: 18,
                     ),
                     label: Text(
-                      'Capture  (${_imagePaths.length}/${AppConstants.maxCropImages})',
-                      style: const TextStyle(
+                      'Capture (${_imagePaths.length}/${AppConstants.maxCropImages})',
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1294,57 +1292,35 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
   //     }
   //   }
   // }
-  // Future<void> _pickImage() async {
-  //   final picker = ImagePicker();
-  //   final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-  //   if (image != null && _imagePaths.length < AppConstants.maxCropImages) {
-  //     setState(() {
-  //       _imagePaths.add(image.path);
-  //     });
-  //   }
-  // }
   Future<void> _pickImage() async {
-    final pickedFile = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-    ); // your logic
-    if (pickedFile != null) {
-      setState(() {
-        _imagePaths.add(pickedFile.path);
-        _imageSources.add('gallery');
-      });
-    }
-  }
-
-  // Future<void> _captureImage() async {
-  //   final cameras = await availableCameras();
-  //   final firstCamera = cameras.first;
-
-  //   final imagePath = await Navigator.push<String>(
-  //     context,
-  //     MaterialPageRoute(
-  //       builder: (context) => CameraScreen(
-  //         camera: firstCamera,
-  //         latitude: _latitude,
-  //         longitude: _longitude,
-  //       ),
-  //     ),
-  //   );
-
-  //   if (imagePath != null) {
-  //     setState(() {
-  //       _imagePaths.add(imagePath);
-  //     });
-  //     _showSuccessSnackbar('Image captured successfully!');
-  //   }
-  // }
-  Future<void> _captureImage() async {
     final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null && _imagePaths.length < AppConstants.maxCropImages) {
       setState(() {
         _imagePaths.add(image.path);
+      });
+    }
+  }
+
+  Future<void> _captureImage() async {
+    final cameras = await availableCameras();
+    final firstCamera = cameras.first;
+
+    final imagePath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraScreen(
+          camera: firstCamera,
+          latitude: _latitude,
+          longitude: _longitude,
+        ),
+      ),
+    );
+
+    if (imagePath != null) {
+      setState(() {
+        _imagePaths.add(imagePath);
       });
       _showSuccessSnackbar('Image captured successfully!');
     }
