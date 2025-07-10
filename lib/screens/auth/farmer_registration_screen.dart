@@ -1,7 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_farmer/screens/farmer/farmer_dashboard_screen.dart';
 import '../../constants/app_theme.dart';
 import '../../services/auth_service.dart';
+
+const Map<String, List<String>> maharashtraDistricts = {
+  'Ahmednagar': ['Ahmednagar', 'Shrirampur', 'Rahuri', 'Sangamner'],
+  'Akola': ['Akola', 'Balapur', 'Patur', 'Telhara'],
+  'Amravati': ['Amravati', 'Chandur', 'Daryapur', 'Anjangaon'],
+  'Aurangabad': ['Aurangabad', 'Gangapur', 'Vaijapur', 'Sillod'],
+  'Beed': ['Beed', 'Ashti', 'Ambejogai', 'Patoda'],
+  'Bhandara': ['Bhandara', 'Tumsar', 'Sakoli', 'Lakhani'],
+  'Buldhana': ['Buldhana', 'Chikhli', 'Mehkar', 'Jalgaon Jamod'],
+  'Chandrapur': ['Chandrapur', 'Warora', 'Bhadravati', 'Chimur'],
+  'Dhule': ['Dhule', 'Shirpur', 'Sakri', 'Sindkheda'],
+  'Gadchiroli': ['Gadchiroli', 'Aheri', 'Chamorshi', 'Etapalli'],
+  'Gondia': ['Gondia', 'Tirora', 'Goregaon', 'Amgaon'],
+  'Hingoli': ['Hingoli', 'Kalamnuri', 'Basmath', 'Sengaon'],
+  'Jalgaon': ['Jalgaon', 'Bhusawal', 'Jamner', 'Chalisgaon'],
+  'Jalna': ['Jalna', 'Bhokardan', 'Jaffrabad', 'Ambad'],
+  'Kolhapur': ['Kolhapur', 'Karveer', 'Gaganbawada', 'Radhanagari'],
+  'Latur': ['Latur', 'Ahmadpur', 'Udgir', 'Nilanga'],
+  'Mumbai City': ['Mumbai City'],
+  'Mumbai Suburban': ['Mumbai Suburban'],
+  'Nagpur': ['Nagpur', 'Katol', 'Narkhed', 'Kalmeshwar'],
+  'Nanded': ['Nanded', 'Kinwat', 'Hadgaon', 'Bhokar'],
+  'Nandurbar': ['Nandurbar', 'Shahade', 'Talode', 'Navapur'],
+  'Nashik': ['Nashik', 'Malegaon', 'Sinnar', 'Igatpuri'],
+  'Osmanabad': ['Osmanabad', 'Tuljapur', 'Paranda', 'Bhum'],
+  'Parbhani': ['Parbhani', 'Gangakhed', 'Pathri', 'Sonpeth'],
+  'Pune': ['Pune City', 'Haveli', 'Mulshi', 'Bhor'],
+  'Raigad': ['Raigad', 'Alibag', 'Pen', 'Mahad'],
+  'Ratnagiri': ['Ratnagiri', 'Mandangad', 'Dapoli', 'Khed'],
+  'Sangli': ['Sangli', 'Miraj', 'Tasgaon', 'Kavathemahankal'],
+  'Satara': ['Satara', 'Karad', 'Wai', 'Patan'],
+  'Sindhudurg': ['Sindhudurg', 'Kudal', 'Sawantwadi', 'Dodamarg'],
+  'Solapur': ['Solapur', 'Barshi', 'Madha', 'Karmala'],
+  'Thane': ['Thane', 'Kalyan', 'Bhiwandi', 'Murbad'],
+  'Wardha': ['Wardha', 'Hinganghat', 'Deoli', 'Arvi'],
+  'Washim': ['Washim', 'Mangrulpir', 'Karanja', 'Manora'],
+  'Yavatmal': ['Yavatmal', 'Pusad', 'Umarkhed', 'Digras'],
+};
 
 class FarmerRegistrationScreen extends StatefulWidget {
   const FarmerRegistrationScreen({super.key});
@@ -22,12 +61,56 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
   final _talukaController = TextEditingController();
   final _districtController = TextEditingController();
   final _pincodeController = TextEditingController();
+  final _stateController = TextEditingController();
 
   bool _isLoading = false;
   int _currentStep = 0;
   bool _acceptedTerms = false;
   bool _showTermsError = false;
   late PageController _pageController;
+
+  List<String> availableTalukas = [];
+  final FocusNode _districtFocusNode = FocusNode();
+  final FocusNode _talukaFocusNode = FocusNode();
+  bool _isDistrictSelected = false;
+
+  // const Map<String, List<String>> maharashtraDistricts = {
+  //   'Ahmednagar': ['Ahmednagar', 'Shrirampur', 'Rahuri', 'Sangamner'],
+  //   'Akola': ['Akola', 'Balapur', 'Patur', 'Telhara'],
+  //   'Amravati': ['Amravati', 'Chandur', 'Daryapur', 'Anjangaon'],
+  //   'Aurangabad': ['Aurangabad', 'Gangapur', 'Vaijapur', 'Sillod'],
+  //   'Beed': ['Beed', 'Ashti', 'Ambejogai', 'Patoda'],
+  //   'Bhandara': ['Bhandara', 'Tumsar', 'Sakoli', 'Lakhani'],
+  //   'Buldhana': ['Buldhana', 'Chikhli', 'Mehkar', 'Jalgaon Jamod'],
+  //   'Chandrapur': ['Chandrapur', 'Warora', 'Bhadravati', 'Chimur'],
+  //   'Dhule': ['Dhule', 'Shirpur', 'Sakri', 'Sindkheda'],
+  //   'Gadchiroli': ['Gadchiroli', 'Aheri', 'Chamorshi', 'Etapalli'],
+  //   'Gondia': ['Gondia', 'Tirora', 'Goregaon', 'Amgaon'],
+  //   'Hingoli': ['Hingoli', 'Kalamnuri', 'Basmath', 'Sengaon'],
+  //   'Jalgaon': ['Jalgaon', 'Bhusawal', 'Jamner', 'Chalisgaon'],
+  //   'Jalna': ['Jalna', 'Bhokardan', 'Jaffrabad', 'Ambad'],
+  //   'Kolhapur': ['Kolhapur', 'Karveer', 'Gaganbawada', 'Radhanagari'],
+  //   'Latur': ['Latur', 'Ahmadpur', 'Udgir', 'Nilanga'],
+  //   'Mumbai City': ['Mumbai City'],
+  //   'Mumbai Suburban': ['Mumbai Suburban'],
+  //   'Nagpur': ['Nagpur', 'Katol', 'Narkhed', 'Kalmeshwar'],
+  //   'Nanded': ['Nanded', 'Kinwat', 'Hadgaon', 'Bhokar'],
+  //   'Nandurbar': ['Nandurbar', 'Shahade', 'Talode', 'Navapur'],
+  //   'Nashik': ['Nashik', 'Malegaon', 'Sinnar', 'Igatpuri'],
+  //   'Osmanabad': ['Osmanabad', 'Tuljapur', 'Paranda', 'Bhum'],
+  //   'Parbhani': ['Parbhani', 'Gangakhed', 'Pathri', 'Sonpeth'],
+  //   'Pune': ['Pune City', 'Haveli', 'Mulshi', 'Bhor'],
+  //   'Raigad': ['Raigad', 'Alibag', 'Pen', 'Mahad'],
+  //   'Ratnagiri': ['Ratnagiri', 'Mandangad', 'Dapoli', 'Khed'],
+  //   'Sangli': ['Sangli', 'Miraj', 'Tasgaon', 'Kavathemahankal'],
+  //   'Satara': ['Satara', 'Karad', 'Wai', 'Patan'],
+  //   'Sindhudurg': ['Sindhudurg', 'Kudal', 'Sawantwadi', 'Dodamarg'],
+  //   'Solapur': ['Solapur', 'Barshi', 'Madha', 'Karmala'],
+  //   'Thane': ['Thane', 'Kalyan', 'Bhiwandi', 'Murbad'],
+  //   'Wardha': ['Wardha', 'Hinganghat', 'Deoli', 'Arvi'],
+  //   'Washim': ['Washim', 'Mangrulpir', 'Karanja', 'Manora'],
+  //   'Yavatmal': ['Yavatmal', 'Pusad', 'Umarkhed', 'Digras'],
+  // };
 
   @override
   void initState() {
@@ -53,6 +136,11 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
     _districtController.dispose();
     _pincodeController.dispose();
     _pageController.dispose();
+    //suraj add
+    _districtFocusNode.dispose();
+    _talukaFocusNode.dispose();
+
+    //
     super.dispose();
   }
 
@@ -173,29 +261,29 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
                     ),
                     SizedBox(height: isSmallScreen ? 12 : 16),
                     // Back to Login Link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Already have an account? ',
-                          style: AppTheme.textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: isSmallScreen ? 12 : 14,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(
-                            'Back to Login',
-                            style: AppTheme.textTheme.labelLarge?.copyWith(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: isSmallScreen ? 12 : 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    // Row(
+                    //   mainAxisAlignment: MainAxisAlignment.center,
+                    //   children: [
+                    //     Text(
+                    //       'Already have an account? ',
+                    //       style: AppTheme.textTheme.bodyMedium?.copyWith(
+                    //         color: AppTheme.textSecondaryColor,
+                    //         fontSize: isSmallScreen ? 12 : 14,
+                    //       ),
+                    //     ),
+                    //     TextButton(
+                    //       onPressed: () => Navigator.pop(context),
+                    //       child: Text(
+                    //         'Back to Login',
+                    //         style: AppTheme.textTheme.labelLarge?.copyWith(
+                    //           color: AppTheme.primaryColor,
+                    //           fontWeight: FontWeight.w600,
+                    //           fontSize: isSmallScreen ? 12 : 14,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
                   ],
                 ),
               ),
@@ -363,6 +451,120 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
     );
   }
 
+  // Widget _buildAddressStep(bool isSmallScreen) {
+  //   return SingleChildScrollView(
+  //     padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Text(
+  //           'Address Information',
+  //           style: AppTheme.textTheme.headlineMedium?.copyWith(
+  //             fontSize: isSmallScreen ? 18 : 20,
+  //           ),
+  //         ),
+  //         const SizedBox(height: 8),
+  //         Text(
+  //           'Please provide your address details',
+  //           style: AppTheme.textTheme.bodyMedium?.copyWith(
+  //             color: AppTheme.textSecondaryColor,
+  //             fontSize: isSmallScreen ? 12 : 14,
+  //           ),
+  //         ),
+  //         SizedBox(height: isSmallScreen ? 16 : 24),
+
+  //         _buildTextField(
+  //           controller: _villageController,
+  //           label: 'State',
+  //           hint: 'Enter your state name',
+  //           icon: Icons.account_balance,
+  //           validator: (value) {
+  //             if (value == null || value.isEmpty) {
+  //               return 'State is required';
+  //             }
+  //             return null;
+  //           },
+  //         ),
+  //         SizedBox(height: isSmallScreen ? 12 : 16),
+
+  //         _buildTextField(
+  //           controller: _landmarkController,
+  //           label: 'District',
+  //           hint: 'Enter nearby landmark',
+  //           icon: Icons.flag,
+  //           validator: (value) {
+  //             if (value == null || value.isEmpty) {
+  //               return 'District is required';
+  //             }
+  //             return null;
+  //           },
+  //         ),
+  //         SizedBox(height: isSmallScreen ? 12 : 16),
+
+  //         _buildTextField(
+  //           controller: _talukaController,
+  //           label: 'Taluka',
+  //           hint: 'Enter your taluka',
+  //           icon: Icons.map,
+  //           validator: (value) {
+  //             if (value == null || value.isEmpty) {
+  //               return 'Taluka is required';
+  //             }
+  //             return null;
+  //           },
+  //         ),
+  //         SizedBox(height: isSmallScreen ? 12 : 16),
+
+  //         _buildTextField(
+  //           controller: _districtController,
+  //           label: 'Village',
+  //           hint: 'Enter your Village',
+  //           icon: Icons.map,
+  //           validator: (value) {
+  //             if (value == null || value.isEmpty) {
+  //               return 'Village is required';
+  //             }
+  //             return null;
+  //           },
+  //         ),
+  //         SizedBox(height: isSmallScreen ? 12 : 16),
+  //         _buildTextField(
+  //           controller: _landmarkController,
+  //           label: 'Landmark',
+  //           hint: 'Enter nearby landmark',
+  //           icon: Icons.place,
+  //           validator: (value) {
+  //             if (value == null || value.isEmpty) {
+  //               return 'Landmark is required';
+  //             }
+  //             return null;
+  //           },
+  //         ),
+  //         SizedBox(height: isSmallScreen ? 12 : 16),
+  //         _buildTextField(
+  //           controller: _pincodeController,
+  //           label: 'Pincode',
+  //           hint: 'Enter 6-digit pincode',
+  //           icon: Icons.pin_drop,
+  //           keyboardType: TextInputType.number,
+  //           inputFormatters: [
+  //             FilteringTextInputFormatter.digitsOnly,
+  //             LengthLimitingTextInputFormatter(6),
+  //           ],
+  //           validator: (value) {
+  //             if (value == null || value.isEmpty) {
+  //               return 'Pincode is required';
+  //             }
+  //             if (value.length != 6) {
+  //               return 'Pincode must be 6 digits';
+  //             }
+  //             return null;
+  //           },
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
   Widget _buildAddressStep(bool isSmallScreen) {
     return SingleChildScrollView(
       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
@@ -386,10 +588,165 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
           SizedBox(height: isSmallScreen ? 16 : 24),
 
           _buildTextField(
+            controller: _stateController..text = 'Maharashtra',
+            label: 'State',
+            hint: 'Your state',
+            icon: Icons.account_balance,
+            enabled: false,
+          ),
+          SizedBox(height: isSmallScreen ? 12 : 16),
+
+          // District Autocomplete
+          RawAutocomplete<String>(
+            focusNode: _districtFocusNode,
+            textEditingController: _districtController,
+            optionsBuilder: (TextEditingValue textEditingValue) {
+              if (textEditingValue.text.isEmpty) {
+                return const Iterable<String>.empty();
+              }
+              return maharashtraDistricts.keys.where((district) {
+                return district.toLowerCase().contains(
+                  textEditingValue.text.toLowerCase(),
+                );
+              });
+            },
+            onSelected: (String selection) {
+              setState(() {
+                _districtController.text = selection;
+                availableTalukas = maharashtraDistricts[selection] ?? [];
+                _isDistrictSelected = true;
+                _talukaController.clear();
+                FocusScope.of(context).requestFocus(_talukaFocusNode);
+              });
+            },
+            fieldViewBuilder:
+                (
+                  BuildContext context,
+                  TextEditingController textEditingController,
+                  FocusNode focusNode,
+                  VoidCallback onFieldSubmitted,
+                ) {
+                  return _buildTextField(
+                    controller: textEditingController,
+                    label: 'District',
+                    hint: 'Enter District',
+                    icon: Icons.flag,
+                    focusNode: focusNode,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'District is required';
+                      }
+                      if (!maharashtraDistricts.containsKey(value)) {
+                        return 'Please select from suggestions';
+                      }
+                      return null;
+                    },
+                  );
+                },
+            optionsViewBuilder:
+                (
+                  BuildContext context,
+                  AutocompleteOnSelected<String> onSelected,
+                  Iterable<String> options,
+                ) {
+                  return Material(
+                    elevation: 4.0,
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: options.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final String option = options.elementAt(index);
+                        return InkWell(
+                          onTap: () => onSelected(option),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(option),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+          ),
+          SizedBox(height: isSmallScreen ? 12 : 16),
+
+          // Taluka Autocomplete
+          RawAutocomplete<String>(
+            focusNode: _talukaFocusNode,
+            textEditingController: _talukaController,
+            optionsBuilder: (TextEditingValue textEditingValue) {
+              if (!_isDistrictSelected) return const Iterable<String>.empty();
+              if (textEditingValue.text.isEmpty) {
+                return availableTalukas;
+              }
+              return availableTalukas.where((taluka) {
+                return taluka.toLowerCase().contains(
+                  textEditingValue.text.toLowerCase(),
+                );
+              });
+            },
+            onSelected: (String selection) {
+              setState(() {
+                _talukaController.text = selection;
+              });
+            },
+            fieldViewBuilder:
+                (
+                  BuildContext context,
+                  TextEditingController textEditingController,
+                  FocusNode focusNode,
+                  VoidCallback onFieldSubmitted,
+                ) {
+                  return _buildTextField(
+                    controller: textEditingController,
+                    label: 'Taluka',
+                    hint: _isDistrictSelected
+                        ? 'Select your taluka'
+                        : 'Select district first',
+                    icon: Icons.map,
+                    focusNode: focusNode,
+                    enabled: _isDistrictSelected,
+                    validator: (value) {
+                      if (value == null || value.isEmpty)
+                        return 'Taluka is required';
+                      if (!availableTalukas.contains(value)) {
+                        return 'Please select from suggestions';
+                      }
+                      return null;
+                    },
+                  );
+                },
+            optionsViewBuilder:
+                (
+                  BuildContext context,
+                  AutocompleteOnSelected<String> onSelected,
+                  Iterable<String> options,
+                ) {
+                  return Material(
+                    elevation: 4.0,
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: options.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final String option = options.elementAt(index);
+                        return InkWell(
+                          onTap: () => onSelected(option),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(option),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+          ),
+          SizedBox(height: isSmallScreen ? 12 : 16),
+          _buildTextField(
             controller: _villageController,
             label: 'Village',
-            hint: 'Enter your village name',
-            icon: Icons.location_city,
+            hint: 'Enter your Village',
+            icon: Icons.map,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Village is required';
@@ -398,7 +755,6 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
             },
           ),
           SizedBox(height: isSmallScreen ? 12 : 16),
-
           _buildTextField(
             controller: _landmarkController,
             label: 'Landmark',
@@ -412,35 +768,6 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
             },
           ),
           SizedBox(height: isSmallScreen ? 12 : 16),
-
-          _buildTextField(
-            controller: _talukaController,
-            label: 'Taluka',
-            hint: 'Enter your taluka',
-            icon: Icons.map,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Taluka is required';
-              }
-              return null;
-            },
-          ),
-          SizedBox(height: isSmallScreen ? 12 : 16),
-
-          _buildTextField(
-            controller: _districtController,
-            label: 'District',
-            hint: 'Enter your district',
-            icon: Icons.map,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'District is required';
-              }
-              return null;
-            },
-          ),
-          SizedBox(height: isSmallScreen ? 12 : 16),
-
           _buildTextField(
             controller: _pincodeController,
             label: 'Pincode',
@@ -461,6 +788,8 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
               return null;
             },
           ),
+
+          // ... your existing village, landmark, pincode fields ...
         ],
       ),
     );
@@ -523,17 +852,43 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
     );
   }
 
+  // Widget _buildTextField({
+  //   required TextEditingController controller,
+  //   required String label,
+  //   required String hint,
+  //   required IconData icon,
+  //   String? Function(String?)? validator,
+  //   TextInputType? keyboardType,
+  //   List<TextInputFormatter>? inputFormatters,
+  // }) {
+  //   return TextFormField(
+  //     controller: controller,
+  //     validator: validator,
+  //     keyboardType: keyboardType,
+  //     inputFormatters: inputFormatters,
+  //     decoration: InputDecoration(
+  //       labelText: label,
+  //       hintText: hint,
+  //       prefixIcon: Icon(icon, color: AppTheme.primaryColor),
+  //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  //     ),
+  //   );
+  // }
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required String hint,
     required IconData icon,
     String? Function(String?)? validator,
+    FocusNode? focusNode,
+    bool enabled = true,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
+      enabled: enabled,
       validator: validator,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
@@ -603,14 +958,13 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
     }
   }
 
+  //
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      print('RegistrationScreen: Starting registration process');
-
       final result = await AuthService.registerFarmer(
         name: _nameController.text.trim(),
         mobileNumber: _contactController.text.trim(),
@@ -623,8 +977,6 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
         pincode: _pincodeController.text.trim(),
       );
 
-      print('RegistrationScreen: Registration result: $result');
-
       if (result['success']) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -633,9 +985,10 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
               backgroundColor: AppTheme.successColor,
             ),
           );
+          // Navigate to FarmerDashboardScreen and remove all previous routes
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => FarmerRegistrationScreen()),
-            (route) => false,
+            MaterialPageRoute(builder: (context) => FarmerDashboardScreen()),
+            (route) => false, // This removes all previous routes
           );
         }
       } else {
@@ -649,7 +1002,6 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
         }
       }
     } catch (e) {
-      print('RegistrationScreen: Registration error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

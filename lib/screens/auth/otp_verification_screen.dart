@@ -101,19 +101,12 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.agriculture,
-                              size: isSmallScreen ? 50 : 60,
-                              color: Colors.white,
-                            ),
+                          Image.asset(
+                            "assets/images/smart-farmingLogo.png",
+                            width: 120,
+                            height: 120,
                           ),
-                          SizedBox(height: isSmallScreen ? 16 : 24),
+                          SizedBox(height: isSmallScreen ? 14 : 16),
                           Text(
                             AppStrings.getString('app_title', langCode),
                             style: AppTheme.textTheme.displaySmall?.copyWith(

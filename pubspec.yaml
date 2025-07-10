@@ -24,8 +24,11 @@ dependencies:
   # Location Services
   geolocator: ^11.0.0
   permission_handler: ^11.3.1
+  geocoding: ^2.1.0
+  camera: ^0.10.5
   
   # Image Handling
+  image: ^4.0.17
   image_picker: ^1.0.7
   # file_picker: ^6.1.1
   file_picker: ^10.2.0

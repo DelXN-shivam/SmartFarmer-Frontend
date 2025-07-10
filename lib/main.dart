@@ -70,6 +70,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:smart_farmer/screens/auth/otp_verification_screen.dart';
+import 'package:smart_farmer/screens/farmer/crop_details_form.dart';
 
 import 'constants/app_constants.dart';
 import 'constants/strings.dart';
@@ -147,9 +148,11 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
         MaterialPageRoute(
           builder: (context) {
             if (widget.authState is Authenticated) {
-              return const FarmerDashboardScreen();
+              // return const FarmerDashboardScreen();
+              return const CropDetailsForm(crop: null, farmerId: "");
             }
-            return const MobileOTPScreen();
+            // return const MobileOTPScreen();
+            return const CropDetailsForm(crop: null, farmerId: "");
           },
         ),
       );
@@ -159,5 +162,6 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
   @override
   Widget build(BuildContext context) {
     return const SplashScreen();
+    // return const CropDetailsForm(crop: null, farmerId: "");
   }
 }

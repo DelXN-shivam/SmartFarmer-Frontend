@@ -10,7 +10,7 @@ class AppStrings {
   static const Map<String, Map<String, String>> translations = {
     'en': {
       // App Title
-      'app_title': 'SmartFarmer',
+      'app_title': 'Smart Farming',
 
       // Authentication
       'login': 'Login',

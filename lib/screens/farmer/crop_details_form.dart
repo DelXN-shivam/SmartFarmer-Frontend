@@ -1,7 +1,11 @@
+import 'dart:io';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:smart_farmer/screens/farmer/CameraScreen.dart';
 import '../../blocs/crop/crop_bloc.dart';
 import '../../blocs/crop/crop_event.dart';
 import '../../constants/strings.dart';
@@ -35,7 +39,8 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
   double _latitude = AppConstants.defaultLatitude;
   double _longitude = AppConstants.defaultLongitude;
   List<String> _imagePaths = [];
-
+  List<String> _imageSources = [];
+  late final ImagePicker _imagePicker;
   @override
   void initState() {
     super.initState();
@@ -51,6 +56,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       _latitude = widget.crop!.latitude;
       _longitude = widget.crop!.longitude;
       _imagePaths = List.from(widget.crop!.imagePaths);
+      _imagePicker = ImagePicker();
     } else {
       _calculateExpectedHarvestDate();
     }
@@ -812,140 +818,140 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
     );
   }
 
-  Widget _buildImageSection(String langCode) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E7D32).withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E8),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.photo_library,
-                  color: Color(0xFF2E7D32),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                AppStrings.getString('upload_images', langCode),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1B5E20),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_imagePaths.isNotEmpty)
-            Container(
-              height: 120,
-              margin: const EdgeInsets.only(bottom: 16),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _imagePaths.length,
-                itemBuilder: (context, index) {
-                  return Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FFFE),
-                            border: Border.all(color: const Color(0xFFE8F5E8)),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.image,
-                              size: 40,
-                              color: Color(0xFF4CAF50),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _imagePaths.removeAt(index);
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                                size: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          if (_imagePaths.length < AppConstants.maxCropImages)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(
-                  Icons.add_photo_alternate,
-                  color: Colors.white,
-                  size: 18,
-                ),
-                label: Text(
-                  'Add Image (${_imagePaths.length}/${AppConstants.maxCropImages})',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                onPressed: _imagePaths.length >= AppConstants.maxCropImages
-                    ? null
-                    : _pickImage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 2,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildImageSection(String langCode) {
+  //   return Container(
+  //     padding: const EdgeInsets.all(20),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: BorderRadius.circular(16),
+  //       border: Border.all(color: const Color(0xFFE0E0E0)),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: const Color(0xFF2E7D32).withOpacity(0.05),
+  //           blurRadius: 10,
+  //           offset: const Offset(0, 4),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Row(
+  //           children: [
+  //             Container(
+  //               padding: const EdgeInsets.all(8),
+  //               decoration: BoxDecoration(
+  //                 color: const Color(0xFFE8F5E8),
+  //                 borderRadius: BorderRadius.circular(8),
+  //               ),
+  //               child: const Icon(
+  //                 Icons.photo_library,
+  //                 color: Color(0xFF2E7D32),
+  //                 size: 20,
+  //               ),
+  //             ),
+  //             const SizedBox(width: 12),
+  //             Text(
+  //               AppStrings.getString('upload_images', langCode),
+  //               style: const TextStyle(
+  //                 fontSize: 16,
+  //                 fontWeight: FontWeight.w600,
+  //                 color: Color(0xFF1B5E20),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //         const SizedBox(height: 16),
+  //         if (_imagePaths.isNotEmpty)
+  //           Container(
+  //             height: 120,
+  //             margin: const EdgeInsets.only(bottom: 16),
+  //             child: ListView.builder(
+  //               scrollDirection: Axis.horizontal,
+  //               itemCount: _imagePaths.length,
+  //               itemBuilder: (context, index) {
+  //                 return Container(
+  //                   margin: const EdgeInsets.only(right: 12),
+  //                   child: Stack(
+  //                     children: [
+  //                       Container(
+  //                         width: 120,
+  //                         height: 120,
+  //                         decoration: BoxDecoration(
+  //                           color: const Color(0xFFF8FFFE),
+  //                           border: Border.all(color: const Color(0xFFE8F5E8)),
+  //                           borderRadius: BorderRadius.circular(12),
+  //                         ),
+  //                         child: const Center(
+  //                           child: Icon(
+  //                             Icons.image,
+  //                             size: 40,
+  //                             color: Color(0xFF4CAF50),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                       Positioned(
+  //                         top: 4,
+  //                         right: 4,
+  //                         child: GestureDetector(
+  //                           onTap: () {
+  //                             setState(() {
+  //                               _imagePaths.removeAt(index);
+  //                             });
+  //                           },
+  //                           child: Container(
+  //                             padding: const EdgeInsets.all(4),
+  //                             decoration: const BoxDecoration(
+  //                               color: Colors.red,
+  //                               shape: BoxShape.circle,
+  //                             ),
+  //                             child: const Icon(
+  //                               Icons.close,
+  //                               color: Colors.white,
+  //                               size: 14,
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 );
+  //               },
+  //             ),
+  //           ),
+  //         if (_imagePaths.length < AppConstants.maxCropImages)
+  //           SizedBox(
+  //             width: double.infinity,
+  //             child: ElevatedButton.icon(
+  //               icon: const Icon(
+  //                 Icons.add_photo_alternate,
+  //                 color: Colors.white,
+  //                 size: 18,
+  //               ),
+  //               label: Text(
+  //                 'Add Image (${_imagePaths.length}/${AppConstants.maxCropImages})',
+  //                 style: const TextStyle(
+  //                   color: Colors.white,
+  //                   fontWeight: FontWeight.w600,
+  //                 ),
+  //               ),
+  //               onPressed: _imagePaths.length >= AppConstants.maxCropImages
+  //                   ? null
+  //                   : _pickImage,
+  //               style: ElevatedButton.styleFrom(
+  //                 backgroundColor: const Color(0xFF4CAF50),
+  //                 padding: const EdgeInsets.symmetric(vertical: 14),
+  //                 shape: RoundedRectangleBorder(
+  //                   borderRadius: BorderRadius.circular(10),
+  //                 ),
+  //                 elevation: 2,
+  //               ),
+  //             ),
+  //           ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildActionSection(String langCode) {
     return Column(
@@ -1023,6 +1029,174 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
     );
   }
 
+  Widget _buildImageSection(String langCode) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2E7D32).withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E8),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.photo_library,
+                  color: Color(0xFF2E7D32),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                AppStrings.getString('upload_images', langCode),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1B5E20),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_imagePaths.isNotEmpty)
+            Container(
+              height: 120,
+              margin: const EdgeInsets.only(bottom: 16),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _imagePaths.length,
+                itemBuilder: (context, index) {
+                  return Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FFFE),
+                            border: Border.all(color: const Color(0xFFE8F5E8)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _imagePaths[index].startsWith('http')
+                              ? Image.network(
+                                  _imagePaths[index],
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.file(
+                                  File(_imagePaths[index]),
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _imagePaths.removeAt(index);
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          if (_imagePaths.length < AppConstants.maxCropImages)
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(
+                      Icons.add_photo_alternate,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    label: Text(
+                      'Add Image (${_imagePaths.length}/${AppConstants.maxCropImages})',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onPressed: _imagePaths.length >= AppConstants.maxCropImages
+                        ? null
+                        : _pickImage,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    label: Text(
+                      'Capture  (${_imagePaths.length}/${AppConstants.maxCropImages})',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onPressed: _imagePaths.length >= AppConstants.maxCropImages
+                        ? null
+                        : _captureImage,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
   void _calculateExpectedHarvestDate() {
     final lifespan = AppConstants.cropLifespan[_selectedCropType] ?? 120;
     _expectedHarvestDate = _sowingDate.add(Duration(days: lifespan));
@@ -1090,34 +1264,111 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+  // Future<void> _pickImage() async {
+  //   final ImagePicker picker = ImagePicker();
+  //   final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
-    if (image != null) {
+  //   if (image != null) {
+  //     setState(() {
+  //       _imagePaths.add(image.path);
+  //     });
+
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: const Row(
+  //             children: [
+  //               Icon(Icons.check_circle, color: Colors.white, size: 20),
+  //               SizedBox(width: 8),
+  //               Text('Image added successfully!'),
+  //             ],
+  //           ),
+  //           backgroundColor: const Color(0xFF4CAF50),
+  //           behavior: SnackBarBehavior.floating,
+  //           shape: RoundedRectangleBorder(
+  //             borderRadius: BorderRadius.circular(10),
+  //           ),
+  //           duration: const Duration(seconds: 2),
+  //         ),
+  //       );
+  //     }
+  //   }
+  // }
+  // Future<void> _pickImage() async {
+  //   final picker = ImagePicker();
+  //   final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+  //   if (image != null && _imagePaths.length < AppConstants.maxCropImages) {
+  //     setState(() {
+  //       _imagePaths.add(image.path);
+  //     });
+  //   }
+  // }
+  Future<void> _pickImage() async {
+    final pickedFile = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+    ); // your logic
+    if (pickedFile != null) {
+      setState(() {
+        _imagePaths.add(pickedFile.path);
+        _imageSources.add('gallery');
+      });
+    }
+  }
+
+  // Future<void> _captureImage() async {
+  //   final cameras = await availableCameras();
+  //   final firstCamera = cameras.first;
+
+  //   final imagePath = await Navigator.push<String>(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => CameraScreen(
+  //         camera: firstCamera,
+  //         latitude: _latitude,
+  //         longitude: _longitude,
+  //       ),
+  //     ),
+  //   );
+
+  //   if (imagePath != null) {
+  //     setState(() {
+  //       _imagePaths.add(imagePath);
+  //     });
+  //     _showSuccessSnackbar('Image captured successfully!');
+  //   }
+  // }
+  Future<void> _captureImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+
+    if (image != null && _imagePaths.length < AppConstants.maxCropImages) {
       setState(() {
         _imagePaths.add(image.path);
       });
+      _showSuccessSnackbar('Image captured successfully!');
+    }
+  }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Image added successfully!'),
-              ],
-            ),
-            backgroundColor: const Color(0xFF4CAF50),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            duration: const Duration(seconds: 2),
+  void _showSuccessSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(message),
+            ],
           ),
-        );
-      }
+          backgroundColor: const Color(0xFF4CAF50),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
