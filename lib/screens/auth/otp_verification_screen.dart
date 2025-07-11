@@ -1,9 +1,9 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
+// import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
 import 'package:smart_farmer/screens/common/language_selection.dart';
-import 'package:smart_farmer/screens/farmer/farmer_dashboard_screen.dart';
+// import 'package:smart_farmer/screens/farmer/farmer_dashboard_screen.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/strings.dart';
 import '../../constants/app_theme.dart';
@@ -80,8 +80,8 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.height < 700;
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
+    // final isPortrait =
+    //     MediaQuery.of(context).orientation == Orientation.portrait;
 
     return Scaffold(
       body: Container(

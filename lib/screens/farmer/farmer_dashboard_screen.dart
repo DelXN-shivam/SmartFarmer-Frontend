@@ -1303,7 +1303,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
   }
 
   Widget _buildProfileTab() {
-    final langCode = SharedPrefsService.getLanguage() ?? 'en';
+    // final langCode = SharedPrefsService.getLanguage() ?? 'en';
 
     return SafeArea(
       child: FadeTransition(

@@ -148,11 +148,11 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
         MaterialPageRoute(
           builder: (context) {
             if (widget.authState is Authenticated) {
-              // return const FarmerDashboardScreen();
-              return const CropDetailsForm(crop: null, farmerId: "");
+              return const FarmerDashboardScreen();
+              // return const CropDetailsForm(crop: null, farmerId: "");
             }
-            // return const MobileOTPScreen();
-            return const CropDetailsForm(crop: null, farmerId: "");
+            return const MobileOTPScreen();
+            // return const CropDetailsForm(crop: null, farmerId: "");
           },
         ),
       );
