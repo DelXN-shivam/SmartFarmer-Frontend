@@ -74,44 +74,6 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
   final FocusNode _talukaFocusNode = FocusNode();
   bool _isDistrictSelected = false;
 
-  // const Map<String, List<String>> maharashtraDistricts = {
-  //   'Ahmednagar': ['Ahmednagar', 'Shrirampur', 'Rahuri', 'Sangamner'],
-  //   'Akola': ['Akola', 'Balapur', 'Patur', 'Telhara'],
-  //   'Amravati': ['Amravati', 'Chandur', 'Daryapur', 'Anjangaon'],
-  //   'Aurangabad': ['Aurangabad', 'Gangapur', 'Vaijapur', 'Sillod'],
-  //   'Beed': ['Beed', 'Ashti', 'Ambejogai', 'Patoda'],
-  //   'Bhandara': ['Bhandara', 'Tumsar', 'Sakoli', 'Lakhani'],
-  //   'Buldhana': ['Buldhana', 'Chikhli', 'Mehkar', 'Jalgaon Jamod'],
-  //   'Chandrapur': ['Chandrapur', 'Warora', 'Bhadravati', 'Chimur'],
-  //   'Dhule': ['Dhule', 'Shirpur', 'Sakri', 'Sindkheda'],
-  //   'Gadchiroli': ['Gadchiroli', 'Aheri', 'Chamorshi', 'Etapalli'],
-  //   'Gondia': ['Gondia', 'Tirora', 'Goregaon', 'Amgaon'],
-  //   'Hingoli': ['Hingoli', 'Kalamnuri', 'Basmath', 'Sengaon'],
-  //   'Jalgaon': ['Jalgaon', 'Bhusawal', 'Jamner', 'Chalisgaon'],
-  //   'Jalna': ['Jalna', 'Bhokardan', 'Jaffrabad', 'Ambad'],
-  //   'Kolhapur': ['Kolhapur', 'Karveer', 'Gaganbawada', 'Radhanagari'],
-  //   'Latur': ['Latur', 'Ahmadpur', 'Udgir', 'Nilanga'],
-  //   'Mumbai City': ['Mumbai City'],
-  //   'Mumbai Suburban': ['Mumbai Suburban'],
-  //   'Nagpur': ['Nagpur', 'Katol', 'Narkhed', 'Kalmeshwar'],
-  //   'Nanded': ['Nanded', 'Kinwat', 'Hadgaon', 'Bhokar'],
-  //   'Nandurbar': ['Nandurbar', 'Shahade', 'Talode', 'Navapur'],
-  //   'Nashik': ['Nashik', 'Malegaon', 'Sinnar', 'Igatpuri'],
-  //   'Osmanabad': ['Osmanabad', 'Tuljapur', 'Paranda', 'Bhum'],
-  //   'Parbhani': ['Parbhani', 'Gangakhed', 'Pathri', 'Sonpeth'],
-  //   'Pune': ['Pune City', 'Haveli', 'Mulshi', 'Bhor'],
-  //   'Raigad': ['Raigad', 'Alibag', 'Pen', 'Mahad'],
-  //   'Ratnagiri': ['Ratnagiri', 'Mandangad', 'Dapoli', 'Khed'],
-  //   'Sangli': ['Sangli', 'Miraj', 'Tasgaon', 'Kavathemahankal'],
-  //   'Satara': ['Satara', 'Karad', 'Wai', 'Patan'],
-  //   'Sindhudurg': ['Sindhudurg', 'Kudal', 'Sawantwadi', 'Dodamarg'],
-  //   'Solapur': ['Solapur', 'Barshi', 'Madha', 'Karmala'],
-  //   'Thane': ['Thane', 'Kalyan', 'Bhiwandi', 'Murbad'],
-  //   'Wardha': ['Wardha', 'Hinganghat', 'Deoli', 'Arvi'],
-  //   'Washim': ['Washim', 'Mangrulpir', 'Karanja', 'Manora'],
-  //   'Yavatmal': ['Yavatmal', 'Pusad', 'Umarkhed', 'Digras'],
-  // };
-
   @override
   void initState() {
     super.initState();
