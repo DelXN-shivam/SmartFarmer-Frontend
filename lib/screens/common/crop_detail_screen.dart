@@ -144,11 +144,11 @@ class CropDetailScreen extends StatelessWidget {
               '${crop.area ?? '-'} acres',
               Icons.landscape_rounded,
             ),
-            _buildDetailSection(
-              'Soil Type',
-              crop.soilType ?? '-',
-              Icons.terrain_rounded,
-            ),
+            // _buildDetailSection(
+            //   'Soil Type',
+            //   crop.soilType ?? '-',
+            //   Icons.terrain_rounded,
+            // ),
             _buildDetailSection(
               'Sowing Date',
               crop.sowingDate != null

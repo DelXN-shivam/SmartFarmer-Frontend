@@ -85,7 +85,7 @@ class _CameraScreenState extends State<CameraScreen> {
         final place = placemarks.first;
         setState(() {
           _currentAddress = [
-            if (place.name?.isNotEmpty ?? false) place.name,
+            // if (place.name?.isNotEmpty ?? false) place.name,
             if (place.street?.isNotEmpty ?? false) place.street,
             if (place.subLocality?.isNotEmpty ?? false) place.subLocality,
             if (place.locality?.isNotEmpty ?? false) place.locality,
@@ -124,12 +124,13 @@ class _CameraScreenState extends State<CameraScreen> {
         _measureText(image, '📍 Coordinates: ${info['coordinates']}', font) +
         padding * 2;
     final totalHeight = padding * 2 + (2 + addressLines.length) * lineSpacing;
+    final yStart = image.height - totalHeight - padding;
     img.fillRect(
       image,
       x1: padding,
-      y1: padding,
+      y1: yStart,
       x2: padding + maxWidth,
-      y2: padding + totalHeight - 20,
+      y2: yStart + totalHeight - 20,
       color: bgColor,
       radius: 10,
     );
@@ -138,9 +139,9 @@ class _CameraScreenState extends State<CameraScreen> {
     img.drawRect(
       image,
       x1: padding,
-      y1: padding,
+      y1: yStart,
       x2: padding + maxWidth,
-      y2: padding + totalHeight - 20,
+      y2: yStart + totalHeight - 20,
       color: textColor,
       thickness: 1,
     );
@@ -151,7 +152,7 @@ class _CameraScreenState extends State<CameraScreen> {
       '📍 Coordinates: ${info['coordinates']}',
       font: font,
       x: padding * 2,
-      y: padding * 2,
+      y: yStart + padding,
       color: textColor,
     );
 
@@ -161,7 +162,7 @@ class _CameraScreenState extends State<CameraScreen> {
       '🕒 Time: ${info['timestamp']}',
       font: font,
       x: padding * 2,
-      y: padding * 2 + lineSpacing,
+      y: yStart + padding + lineSpacing,
       color: textColor,
     );
 
@@ -172,7 +173,7 @@ class _CameraScreenState extends State<CameraScreen> {
         addressLines[i],
         font: font,
         x: padding * 2,
-        y: padding * 2 + (2 + i) * lineSpacing,
+        y: yStart + padding + (2 + i) * lineSpacing,
         color: textColor,
       );
     }
@@ -187,7 +188,7 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   List<String> _splitAddress(String address) {
-    const maxLineLength = 40;
+    const maxLineLength = 60;
     final components = address.split(',');
     final lines = <String>[];
     var currentLine = '🏠 ';

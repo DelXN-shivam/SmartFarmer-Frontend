@@ -257,41 +257,6 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
         const SizedBox(height: 16),
         _buildAreaField(langCode),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Flexible(
-              child: _buildDropdownField(
-                AppStrings.getString('crop_type', langCode),
-                'Select crop type',
-                _selectedCropType,
-                AppConstants.cropTypes,
-                Icons.grass,
-                (value) {
-                  setState(() {
-                    _selectedCropType = value!;
-                    _calculateExpectedHarvestDate();
-                  });
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: _buildDropdownField(
-                AppStrings.getString('soil_type', langCode),
-                'Select soil type',
-                _selectedSoilType,
-                AppConstants.soilTypes,
-                Icons.terrain,
-                (value) {
-                  setState(() {
-                    _selectedSoilType = value!;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
         _buildSectionTitle('Dates & Yield', Icons.schedule),
         const SizedBox(height: 16),
         Row(

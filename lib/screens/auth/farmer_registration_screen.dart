@@ -3,44 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:smart_farmer/screens/farmer/farmer_dashboard_screen.dart';
 import '../../constants/app_theme.dart';
 import '../../services/auth_service.dart';
-
-const Map<String, List<String>> maharashtraDistricts = {
-  'Ahmednagar': ['Ahmednagar', 'Shrirampur', 'Rahuri', 'Sangamner'],
-  'Akola': ['Akola', 'Balapur', 'Patur', 'Telhara'],
-  'Amravati': ['Amravati', 'Chandur', 'Daryapur', 'Anjangaon'],
-  'Aurangabad': ['Aurangabad', 'Gangapur', 'Vaijapur', 'Sillod'],
-  'Beed': ['Beed', 'Ashti', 'Ambejogai', 'Patoda'],
-  'Bhandara': ['Bhandara', 'Tumsar', 'Sakoli', 'Lakhani'],
-  'Buldhana': ['Buldhana', 'Chikhli', 'Mehkar', 'Jalgaon Jamod'],
-  'Chandrapur': ['Chandrapur', 'Warora', 'Bhadravati', 'Chimur'],
-  'Dhule': ['Dhule', 'Shirpur', 'Sakri', 'Sindkheda'],
-  'Gadchiroli': ['Gadchiroli', 'Aheri', 'Chamorshi', 'Etapalli'],
-  'Gondia': ['Gondia', 'Tirora', 'Goregaon', 'Amgaon'],
-  'Hingoli': ['Hingoli', 'Kalamnuri', 'Basmath', 'Sengaon'],
-  'Jalgaon': ['Jalgaon', 'Bhusawal', 'Jamner', 'Chalisgaon'],
-  'Jalna': ['Jalna', 'Bhokardan', 'Jaffrabad', 'Ambad'],
-  'Kolhapur': ['Kolhapur', 'Karveer', 'Gaganbawada', 'Radhanagari'],
-  'Latur': ['Latur', 'Ahmadpur', 'Udgir', 'Nilanga'],
-  'Mumbai City': ['Mumbai City'],
-  'Mumbai Suburban': ['Mumbai Suburban'],
-  'Nagpur': ['Nagpur', 'Katol', 'Narkhed', 'Kalmeshwar'],
-  'Nanded': ['Nanded', 'Kinwat', 'Hadgaon', 'Bhokar'],
-  'Nandurbar': ['Nandurbar', 'Shahade', 'Talode', 'Navapur'],
-  'Nashik': ['Nashik', 'Malegaon', 'Sinnar', 'Igatpuri'],
-  'Osmanabad': ['Osmanabad', 'Tuljapur', 'Paranda', 'Bhum'],
-  'Parbhani': ['Parbhani', 'Gangakhed', 'Pathri', 'Sonpeth'],
-  'Pune': ['Pune City', 'Haveli', 'Mulshi', 'Bhor'],
-  'Raigad': ['Raigad', 'Alibag', 'Pen', 'Mahad'],
-  'Ratnagiri': ['Ratnagiri', 'Mandangad', 'Dapoli', 'Khed'],
-  'Sangli': ['Sangli', 'Miraj', 'Tasgaon', 'Kavathemahankal'],
-  'Satara': ['Satara', 'Karad', 'Wai', 'Patan'],
-  'Sindhudurg': ['Sindhudurg', 'Kudal', 'Sawantwadi', 'Dodamarg'],
-  'Solapur': ['Solapur', 'Barshi', 'Madha', 'Karmala'],
-  'Thane': ['Thane', 'Kalyan', 'Bhiwandi', 'Murbad'],
-  'Wardha': ['Wardha', 'Hinganghat', 'Deoli', 'Arvi'],
-  'Washim': ['Washim', 'Mangrulpir', 'Karanja', 'Manora'],
-  'Yavatmal': ['Yavatmal', 'Pusad', 'Umarkhed', 'Digras'],
-};
+import '../../constants/strings.dart';
+import '../../services/shared_prefs_service.dart';
+import '../../constants/app_constants.dart';
 
 class FarmerRegistrationScreen extends StatefulWidget {
   const FarmerRegistrationScreen({super.key});
@@ -65,8 +30,6 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
 
   bool _isLoading = false;
   int _currentStep = 0;
-  bool _acceptedTerms = false;
-  bool _showTermsError = false;
   late PageController _pageController;
 
   List<String> availableTalukas = [];
@@ -110,10 +73,11 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.height < 700;
+    final langCode = SharedPrefsService.getLanguage() ?? 'en';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Farmer Registration'),
+        title: Text(AppStrings.getString('registration', langCode)),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
@@ -132,29 +96,22 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Progress Indicator
+              // Progress Indicator (now only 2 steps)
               Container(
                 padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                 child: Row(
                   children: [
                     _buildProgressStep(
                       0,
-                      'Personal Info',
+                      AppStrings.getString('personal_information', langCode),
                       Icons.person,
                       isSmallScreen,
                     ),
                     _buildProgressLine(),
                     _buildProgressStep(
                       1,
-                      'Address',
+                      AppStrings.getString('address_information', langCode),
                       Icons.location_on,
-                      isSmallScreen,
-                    ),
-                    _buildProgressLine(),
-                    _buildProgressStep(
-                      2,
-                      'Security',
-                      Icons.lock,
                       isSmallScreen,
                     ),
                   ],
@@ -169,9 +126,8 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     controller: _pageController,
                     children: [
-                      _buildPersonalInfoStep(isSmallScreen),
-                      _buildAddressStep(isSmallScreen),
-                      _buildSecurityStep(isSmallScreen),
+                      _buildPersonalInfoStep(isSmallScreen, langCode),
+                      _buildAddressStep(isSmallScreen, langCode),
                     ],
                   ),
                 ),
@@ -193,59 +149,75 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
                                   vertical: isSmallScreen ? 12 : 16,
                                 ),
                               ),
-                              child: const Text('Previous'),
+                              child: Text(
+                                AppStrings.getString('previous', langCode),
+                              ),
                             ),
                           ),
                         if (_currentStep > 0) const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleStepAction,
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(
-                                vertical: isSmallScreen ? 12 : 16,
+                        if (_currentStep == 0)
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleStepAction,
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isSmallScreen ? 12 : 16,
+                                ),
                               ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : Text(
+                                      AppStrings.getString('next', langCode),
+                                    ),
                             ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                          ),
+                        if (_currentStep == 1)
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _isLoading
+                                  ? null
+                                  : () {
+                                      if (_validateCurrentStep()) {
+                                        _handleRegistration();
+                                      }
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isSmallScreen ? 12 : 16,
+                                ),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : Text(
+                                      AppStrings.getString(
+                                        'register',
+                                        langCode,
                                       ),
                                     ),
-                                  )
-                                : Text(_currentStep == 2 ? 'Register' : 'Next'),
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                    SizedBox(height: isSmallScreen ? 12 : 16),
-                    // Back to Login Link
-                    // Row(
-                    //   mainAxisAlignment: MainAxisAlignment.center,
-                    //   children: [
-                    //     Text(
-                    //       'Already have an account? ',
-                    //       style: AppTheme.textTheme.bodyMedium?.copyWith(
-                    //         color: AppTheme.textSecondaryColor,
-                    //         fontSize: isSmallScreen ? 12 : 14,
-                    //       ),
-                    //     ),
-                    //     TextButton(
-                    //       onPressed: () => Navigator.pop(context),
-                    //       child: Text(
-                    //         'Back to Login',
-                    //         style: AppTheme.textTheme.labelLarge?.copyWith(
-                    //           color: AppTheme.primaryColor,
-                    //           fontWeight: FontWeight.w600,
-                    //           fontSize: isSmallScreen ? 12 : 14,
-                    //         ),
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ),
                   ],
                 ),
               ),
@@ -310,21 +282,21 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
     );
   }
 
-  Widget _buildPersonalInfoStep(bool isSmallScreen) {
+  Widget _buildPersonalInfoStep(bool isSmallScreen, String langCode) {
     return SingleChildScrollView(
       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Personal Information',
+            AppStrings.getString('personal_information', langCode),
             style: AppTheme.textTheme.headlineMedium?.copyWith(
               fontSize: isSmallScreen ? 18 : 20,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Please provide your basic information',
+            AppStrings.getString('please_provide_basic_info', langCode),
             style: AppTheme.textTheme.bodyMedium?.copyWith(
               color: AppTheme.textSecondaryColor,
               fontSize: isSmallScreen ? 12 : 14,
@@ -334,15 +306,15 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
 
           _buildTextField(
             controller: _nameController,
-            label: 'Full Name',
-            hint: 'Enter your full name',
+            label: AppStrings.getString('full_name', langCode),
+            hint: AppStrings.getString('enter_full_name', langCode),
             icon: Icons.person,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Name is required';
+                return AppStrings.getString('name_required', langCode);
               }
               if (value.length < 2) {
-                return 'Name must be at least 2 characters';
+                return AppStrings.getString('name_min_length', langCode);
               }
               return null;
             },
@@ -351,15 +323,15 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
 
           _buildTextField(
             controller: _emailController,
-            label: 'Email',
-            hint: 'Enter your email',
+            label: AppStrings.getString('email', langCode),
+            hint: AppStrings.getString('enter_email', langCode),
             icon: Icons.email,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Email is required';
+                return AppStrings.getString('email_required', langCode);
               }
               if (!value.contains('@')) {
-                return 'Invalid email format';
+                return AppStrings.getString('invalid_email', langCode);
               }
               return null;
             },
@@ -368,8 +340,8 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
 
           _buildTextField(
             controller: _contactController,
-            label: 'Contact Number',
-            hint: 'Enter 10-digit mobile number',
+            label: AppStrings.getString('contact_number', langCode),
+            hint: AppStrings.getString('enter_mobile_number', langCode),
             icon: Icons.phone,
             keyboardType: TextInputType.phone,
             inputFormatters: [
@@ -378,10 +350,10 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
             ],
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Contact number is required';
+                return AppStrings.getString('phone_required', langCode);
               }
               if (value.length != 10) {
-                return 'Contact number must be 10 digits';
+                return AppStrings.getString('invalid_phone', langCode);
               }
               return null;
             },
@@ -390,8 +362,8 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
 
           _buildTextField(
             controller: _aadhaarController,
-            label: 'Aadhaar Number',
-            hint: 'Enter 12-digit Aadhaar number',
+            label: AppStrings.getString('aadhaar_number', langCode),
+            hint: AppStrings.getString('enter_aadhaar_number', langCode),
             icon: Icons.credit_card,
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -400,10 +372,10 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
             ],
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Aadhaar number is required';
+                return AppStrings.getString('aadhaar_required', langCode);
               }
               if (value.length != 12) {
-                return 'Aadhaar number must be 12 digits';
+                return AppStrings.getString('invalid_aadhaar', langCode);
               }
               return null;
             },
@@ -413,135 +385,21 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
     );
   }
 
-  // Widget _buildAddressStep(bool isSmallScreen) {
-  //   return SingleChildScrollView(
-  //     padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Text(
-  //           'Address Information',
-  //           style: AppTheme.textTheme.headlineMedium?.copyWith(
-  //             fontSize: isSmallScreen ? 18 : 20,
-  //           ),
-  //         ),
-  //         const SizedBox(height: 8),
-  //         Text(
-  //           'Please provide your address details',
-  //           style: AppTheme.textTheme.bodyMedium?.copyWith(
-  //             color: AppTheme.textSecondaryColor,
-  //             fontSize: isSmallScreen ? 12 : 14,
-  //           ),
-  //         ),
-  //         SizedBox(height: isSmallScreen ? 16 : 24),
-
-  //         _buildTextField(
-  //           controller: _villageController,
-  //           label: 'State',
-  //           hint: 'Enter your state name',
-  //           icon: Icons.account_balance,
-  //           validator: (value) {
-  //             if (value == null || value.isEmpty) {
-  //               return 'State is required';
-  //             }
-  //             return null;
-  //           },
-  //         ),
-  //         SizedBox(height: isSmallScreen ? 12 : 16),
-
-  //         _buildTextField(
-  //           controller: _landmarkController,
-  //           label: 'District',
-  //           hint: 'Enter nearby landmark',
-  //           icon: Icons.flag,
-  //           validator: (value) {
-  //             if (value == null || value.isEmpty) {
-  //               return 'District is required';
-  //             }
-  //             return null;
-  //           },
-  //         ),
-  //         SizedBox(height: isSmallScreen ? 12 : 16),
-
-  //         _buildTextField(
-  //           controller: _talukaController,
-  //           label: 'Taluka',
-  //           hint: 'Enter your taluka',
-  //           icon: Icons.map,
-  //           validator: (value) {
-  //             if (value == null || value.isEmpty) {
-  //               return 'Taluka is required';
-  //             }
-  //             return null;
-  //           },
-  //         ),
-  //         SizedBox(height: isSmallScreen ? 12 : 16),
-
-  //         _buildTextField(
-  //           controller: _districtController,
-  //           label: 'Village',
-  //           hint: 'Enter your Village',
-  //           icon: Icons.map,
-  //           validator: (value) {
-  //             if (value == null || value.isEmpty) {
-  //               return 'Village is required';
-  //             }
-  //             return null;
-  //           },
-  //         ),
-  //         SizedBox(height: isSmallScreen ? 12 : 16),
-  //         _buildTextField(
-  //           controller: _landmarkController,
-  //           label: 'Landmark',
-  //           hint: 'Enter nearby landmark',
-  //           icon: Icons.place,
-  //           validator: (value) {
-  //             if (value == null || value.isEmpty) {
-  //               return 'Landmark is required';
-  //             }
-  //             return null;
-  //           },
-  //         ),
-  //         SizedBox(height: isSmallScreen ? 12 : 16),
-  //         _buildTextField(
-  //           controller: _pincodeController,
-  //           label: 'Pincode',
-  //           hint: 'Enter 6-digit pincode',
-  //           icon: Icons.pin_drop,
-  //           keyboardType: TextInputType.number,
-  //           inputFormatters: [
-  //             FilteringTextInputFormatter.digitsOnly,
-  //             LengthLimitingTextInputFormatter(6),
-  //           ],
-  //           validator: (value) {
-  //             if (value == null || value.isEmpty) {
-  //               return 'Pincode is required';
-  //             }
-  //             if (value.length != 6) {
-  //               return 'Pincode must be 6 digits';
-  //             }
-  //             return null;
-  //           },
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-  Widget _buildAddressStep(bool isSmallScreen) {
+  Widget _buildAddressStep(bool isSmallScreen, String langCode) {
     return SingleChildScrollView(
       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Address Information',
+            AppStrings.getString('address_information', langCode),
             style: AppTheme.textTheme.headlineMedium?.copyWith(
               fontSize: isSmallScreen ? 18 : 20,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Please provide your address details',
+            AppStrings.getString('please_provide_address', langCode),
             style: AppTheme.textTheme.bodyMedium?.copyWith(
               color: AppTheme.textSecondaryColor,
               fontSize: isSmallScreen ? 12 : 14,
@@ -550,9 +408,13 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
           SizedBox(height: isSmallScreen ? 16 : 24),
 
           _buildTextField(
-            controller: _stateController..text = 'Maharashtra',
-            label: 'State',
-            hint: 'Your state',
+            controller: _stateController
+              ..text = AppStrings.getString(
+                AppConstants.stateMaharashtra,
+                langCode,
+              ),
+            label: AppStrings.getString('state', langCode),
+            hint: AppStrings.getString('your_state', langCode),
             icon: Icons.account_balance,
             enabled: false,
           ),
@@ -566,16 +428,22 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
               if (textEditingValue.text.isEmpty) {
                 return const Iterable<String>.empty();
               }
-              return maharashtraDistricts.keys.where((district) {
-                return district.toLowerCase().contains(
+              final localizedDistricts = getLocalizedDistricts(langCode);
+              return localizedDistricts.where((translated) {
+                return translated.toLowerCase().contains(
                   textEditingValue.text.toLowerCase(),
                 );
               });
             },
             onSelected: (String selection) {
+              final englishDistrict = getEnglishDistrictFromLocalized(
+                selection,
+                langCode,
+              );
               setState(() {
                 _districtController.text = selection;
-                availableTalukas = maharashtraDistricts[selection] ?? [];
+                availableTalukas =
+                    AppConstants.maharashtraDistricts[englishDistrict] ?? [];
                 _isDistrictSelected = true;
                 _talukaController.clear();
                 FocusScope.of(context).requestFocus(_talukaFocusNode);
@@ -590,16 +458,28 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
                 ) {
                   return _buildTextField(
                     controller: textEditingController,
-                    label: 'District',
-                    hint: 'Enter District',
+                    label: AppStrings.getString('district', langCode),
+                    hint: AppStrings.getString('enter_district', langCode),
                     icon: Icons.flag,
                     focusNode: focusNode,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'District is required';
+                        return AppStrings.getString(
+                          'district_required',
+                          langCode,
+                        );
                       }
-                      if (!maharashtraDistricts.containsKey(value)) {
-                        return 'Please select from suggestions';
+                      final englishDistrict = getEnglishDistrictFromLocalized(
+                        value,
+                        langCode,
+                      );
+                      if (!AppConstants.maharashtraDistricts.containsKey(
+                        englishDistrict,
+                      )) {
+                        return AppStrings.getString(
+                          'select_from_suggestions',
+                          langCode,
+                        );
                       }
                       return null;
                     },
@@ -639,15 +519,34 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
             optionsBuilder: (TextEditingValue textEditingValue) {
               if (!_isDistrictSelected) return const Iterable<String>.empty();
               if (textEditingValue.text.isEmpty) {
-                return availableTalukas;
+                final englishDistrict = getEnglishDistrictFromLocalized(
+                  _districtController.text,
+                  langCode,
+                );
+                return getLocalizedTalukas(englishDistrict, langCode);
               }
-              return availableTalukas.where((taluka) {
-                return taluka.toLowerCase().contains(
+              final englishDistrict = getEnglishDistrictFromLocalized(
+                _districtController.text,
+                langCode,
+              );
+              return getLocalizedTalukas(englishDistrict, langCode).where((
+                translated,
+              ) {
+                return translated.toLowerCase().contains(
                   textEditingValue.text.toLowerCase(),
                 );
               });
             },
             onSelected: (String selection) {
+              final englishDistrict = getEnglishDistrictFromLocalized(
+                _districtController.text,
+                langCode,
+              );
+              final englishTaluka = getEnglishTalukaFromLocalized(
+                englishDistrict,
+                selection,
+                langCode,
+              );
               setState(() {
                 _talukaController.text = selection;
               });
@@ -661,18 +560,39 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
                 ) {
                   return _buildTextField(
                     controller: textEditingController,
-                    label: 'Taluka',
+                    label: AppStrings.getString('taluka', langCode),
                     hint: _isDistrictSelected
-                        ? 'Select your taluka'
-                        : 'Select district first',
+                        ? AppStrings.getString('select_your_taluka', langCode)
+                        : AppStrings.getString(
+                            'select_district_first',
+                            langCode,
+                          ),
                     icon: Icons.map,
                     focusNode: focusNode,
                     enabled: _isDistrictSelected,
                     validator: (value) {
                       if (value == null || value.isEmpty)
-                        return 'Taluka is required';
-                      if (!availableTalukas.contains(value)) {
-                        return 'Please select from suggestions';
+                        return AppStrings.getString(
+                          'taluka_required',
+                          langCode,
+                        );
+                      final englishDistrict = getEnglishDistrictFromLocalized(
+                        _districtController.text,
+                        langCode,
+                      );
+                      final englishTaluka = getEnglishTalukaFromLocalized(
+                        englishDistrict,
+                        value,
+                        langCode,
+                      );
+                      final talukas =
+                          AppConstants.maharashtraDistricts[englishDistrict] ??
+                          [];
+                      if (!talukas.contains(englishTaluka)) {
+                        return AppStrings.getString(
+                          'select_from_suggestions',
+                          langCode,
+                        );
                       }
                       return null;
                     },
@@ -706,12 +626,12 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
           SizedBox(height: isSmallScreen ? 12 : 16),
           _buildTextField(
             controller: _villageController,
-            label: 'Village',
-            hint: 'Enter your Village',
+            label: AppStrings.getString('village', langCode),
+            hint: AppStrings.getString('enter_village', langCode),
             icon: Icons.map,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Village is required';
+                return AppStrings.getString('village_required', langCode);
               }
               return null;
             },
@@ -719,12 +639,12 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
           SizedBox(height: isSmallScreen ? 12 : 16),
           _buildTextField(
             controller: _landmarkController,
-            label: 'Landmark',
-            hint: 'Enter nearby landmark',
+            label: AppStrings.getString('landmark', langCode),
+            hint: AppStrings.getString('enter_landmark', langCode),
             icon: Icons.place,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Landmark is required';
+                return AppStrings.getString('landmark_required', langCode);
               }
               return null;
             },
@@ -732,8 +652,8 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
           SizedBox(height: isSmallScreen ? 12 : 16),
           _buildTextField(
             controller: _pincodeController,
-            label: 'Pincode',
-            hint: 'Enter 6-digit pincode',
+            label: AppStrings.getString('pincode', langCode),
+            hint: AppStrings.getString('enter_pincode', langCode),
             icon: Icons.pin_drop,
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -742,100 +662,20 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
             ],
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Pincode is required';
+                return AppStrings.getString('pincode_required', langCode);
               }
               if (value.length != 6) {
-                return 'Pincode must be 6 digits';
+                return AppStrings.getString('invalid_pincode', langCode);
               }
               return null;
             },
           ),
-
-          // ... your existing village, landmark, pincode fields ...
+          SizedBox(height: isSmallScreen ? 24 : 32),
         ],
       ),
     );
   }
 
-  Widget _buildSecurityStep(bool isSmallScreen) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Security Setup',
-            style: AppTheme.textTheme.headlineMedium?.copyWith(
-              fontSize: isSmallScreen ? 18 : 20,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create a secure password for your account',
-            style: AppTheme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondaryColor,
-              fontSize: isSmallScreen ? 12 : 14,
-            ),
-          ),
-          SizedBox(height: isSmallScreen ? 16 : 24),
-
-          // Terms and Conditions
-          Row(
-            children: [
-              Checkbox(
-                value: _acceptedTerms,
-                onChanged: (value) =>
-                    setState(() => _acceptedTerms = value ?? false),
-                activeColor: AppTheme.primaryColor,
-              ),
-              Expanded(
-                child: Text(
-                  'I agree to the Terms and Conditions',
-                  style: AppTheme.textTheme.bodySmall?.copyWith(
-                    fontSize: isSmallScreen ? 11 : 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (!_acceptedTerms && _showTermsError)
-            Padding(
-              padding: const EdgeInsets.only(left: 48, top: 4),
-              child: Text(
-                'Please accept the terms and conditions',
-                style: AppTheme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.errorColor,
-                  fontSize: isSmallScreen ? 10 : 11,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // Widget _buildTextField({
-  //   required TextEditingController controller,
-  //   required String label,
-  //   required String hint,
-  //   required IconData icon,
-  //   String? Function(String?)? validator,
-  //   TextInputType? keyboardType,
-  //   List<TextInputFormatter>? inputFormatters,
-  // }) {
-  //   return TextFormField(
-  //     controller: controller,
-  //     validator: validator,
-  //     keyboardType: keyboardType,
-  //     inputFormatters: inputFormatters,
-  //     decoration: InputDecoration(
-  //       labelText: label,
-  //       hintText: hint,
-  //       prefixIcon: Icon(icon, color: AppTheme.primaryColor),
-  //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  //     ),
-  //   );
-  // }
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -874,7 +714,7 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
   }
 
   void _nextStep() {
-    if (_currentStep < 2) {
+    if (_currentStep < 1) {
       setState(() => _currentStep++);
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -884,12 +724,10 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
   }
 
   void _handleStepAction() {
-    if (_currentStep < 2) {
+    if (_currentStep < 1) {
       if (_validateCurrentStep()) {
         _nextStep();
       }
-    } else {
-      _handleRegistration();
     }
   }
 
@@ -908,13 +746,6 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
             _talukaController.text.isNotEmpty &&
             _districtController.text.isNotEmpty &&
             _pincodeController.text.isNotEmpty;
-      case 2:
-        if (!_acceptedTerms) {
-          setState(() => _showTermsError = true);
-          return false;
-        }
-        setState(() => _showTermsError = false);
-        return _formKey.currentState!.validate();
       default:
         return false;
     }
@@ -977,5 +808,37 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  List<String> getLocalizedDistricts(String langCode) {
+    return AppConstants.maharashtraDistricts.keys
+        .map((district) => AppStrings.getString(district, langCode))
+        .toList();
+  }
+
+  String getEnglishDistrictFromLocalized(String localized, String langCode) {
+    return AppConstants.maharashtraDistricts.keys.firstWhere(
+      (district) => AppStrings.getString(district, langCode) == localized,
+      orElse: () => localized,
+    );
+  }
+
+  List<String> getLocalizedTalukas(String district, String langCode) {
+    final talukas = AppConstants.maharashtraDistricts[district] ?? [];
+    return talukas
+        .map((taluka) => AppStrings.getString(taluka, langCode))
+        .toList();
+  }
+
+  String getEnglishTalukaFromLocalized(
+    String district,
+    String localized,
+    String langCode,
+  ) {
+    final talukas = AppConstants.maharashtraDistricts[district] ?? [];
+    return talukas.firstWhere(
+      (taluka) => AppStrings.getString(taluka, langCode) == localized,
+      orElse: () => localized,
+    );
   }
 }

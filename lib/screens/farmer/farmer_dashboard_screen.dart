@@ -268,7 +268,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             _animationController.forward();
           },
           selectedItemColor: const Color(0xFF2E7D32),
-          unselectedItemColor: Colors.grey[400],
+          unselectedItemColor: Colors.grey[900],
           backgroundColor: Colors.white,
           elevation: 0,
           type: BottomNavigationBarType.fixed,
@@ -313,7 +313,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
       child: Icon(
         icon,
         size: 24,
-        color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[400],
+        color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[900],
       ),
     );
   }
@@ -327,19 +327,19 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         child: Transform.translate(
           offset: Offset(0, _slideAnimation.value),
           child: SingleChildScrollView(
-            // padding: const EdgeInsets.only(
-            //   top: 20,
-            //   left: 20,
-            //   right: 20,
-            //   bottom: 20,
-            // ),
+            padding: const EdgeInsets.only(
+              top: 10,
+              left: 20,
+              right: 20,
+              bottom: 20,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // const SizedBox(height: 10),
-                // Enhanced Search Bar
-                _buildEnhancedSearchBar(langCode, "search_farmer"),
-                const SizedBox(height: 24),
+                //  Search Bar
+                // _buildSearchBar(langCode, "search_farmer"),
+                // const SizedBox(height: 24),
 
                 // Welcome Section with Glass Effect
                 _buildGlassWelcomeCard(),
@@ -358,13 +358,13 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                 // AI Insights with Gradient
                 _buildSectionHeader('AI Insights', Icons.psychology_rounded),
                 const SizedBox(height: 16),
-                _buildEnhancedAIInsights(),
+                _buildAIInsights(),
                 const SizedBox(height: 32),
 
                 // Recent Crops with Modern Design
                 _buildSectionHeader('Recent Crops', Icons.grass_rounded),
                 const SizedBox(height: 16),
-                _buildEnhancedRecentCrops(),
+                _buildRecentCrops(),
                 const SizedBox(height: 100),
               ],
             ),
@@ -374,7 +374,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedSearchBar(String langCode, String type) {
+  Widget _buildSearchBar(String langCode, String type) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -788,7 +788,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedAIInsights() {
+  Widget _buildAIInsights() {
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
 
     return BlocBuilder<CropBloc, CropState>(
@@ -891,7 +891,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedRecentCrops() {
+  Widget _buildRecentCrops() {
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
 
     return BlocBuilder<CropBloc, CropState>(
@@ -1074,7 +1074,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         opacity: _fadeAnimation,
         child: Column(
           children: [
-            // Enhanced Header with Search
+            //  Header with Search
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1123,7 +1123,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _buildEnhancedSearchBar(langCode, "search_crops"),
+                  _buildSearchBar(langCode, "search_crops"),
                 ],
               ),
             ),
@@ -1140,7 +1140,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                         final crop = state.crops[index];
                         return Container(
                           margin: const EdgeInsets.only(bottom: 16),
-                          child: _buildEnhancedCropListCard(crop),
+                          child: _buildCropListCard(crop),
                         );
                       },
                     );
@@ -1155,7 +1155,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedCropListCard(dynamic crop) {
+  Widget _buildCropListCard(dynamic crop) {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -1303,7 +1303,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
   }
 
   Widget _buildProfileTab() {
-    // final langCode = SharedPrefsService.getLanguage() ?? 'en';
+    final langCode = SharedPrefsService.getLanguage() ?? 'en';
 
     return SafeArea(
       child: FadeTransition(
@@ -1315,8 +1315,8 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             children: [
               const SizedBox(height: 10),
 
-              // Enhanced Profile Header
-              _buildEnhancedProfileHeader(),
+              //  Profile Header
+              _buildProfileHeader(),
               const SizedBox(height: 32),
 
               // Stats Cards
@@ -1326,12 +1326,12 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
               // Settings Section
               _buildSectionHeader('Settings', Icons.settings_rounded),
               const SizedBox(height: 16),
-              _buildEnhancedSettingsList(),
+              _buildSettingsList(),
               const SizedBox(height: 32),
 
               // Logout Button
               _buildLogoutButton(),
-              const SizedBox(height: 100),
+              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -1339,7 +1339,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedProfileHeader() {
+  Widget _buildProfileHeader() {
     return BlocBuilder<FarmerBloc, FarmerState>(
       builder: (context, state) {
         if (state is SingleFarmerLoaded) {
@@ -1539,8 +1539,21 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedSettingsList() {
+  Widget _buildSettingsList() {
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
+
+    String _getLanguageDisplayName(String code) {
+      switch (code) {
+        case 'en':
+          return 'English';
+        case 'hi':
+          return 'हिन्दी';
+        case 'mr':
+          return 'मराठी';
+        default:
+          return code;
+      }
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -1559,7 +1572,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
           _buildSettingTile(
             Icons.language_rounded,
             AppStrings.getString('language', langCode),
-            langCode == 'en' ? 'English' : 'हिंदी',
+            _getLanguageDisplayName(langCode),
             onTap: _showLanguageDialog,
           ),
           _buildDivider(),
@@ -1897,6 +1910,8 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             _buildLanguageOption('English', 'en', langCode),
             const SizedBox(height: 8),
             _buildLanguageOption('हिंदी', 'hi', langCode),
+            const SizedBox(height: 8),
+            _buildLanguageOption('मराठी', 'mr', langCode),
           ],
         ),
       ),

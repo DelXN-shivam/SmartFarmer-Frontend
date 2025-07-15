@@ -117,7 +117,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Smart Farming Management',
+                            AppStrings.getString(
+                              'smart_farming_management',
+                              langCode,
+                            ),
                             style: AppTheme.textTheme.bodyLarge?.copyWith(
                               color: Colors.white.withOpacity(0.9),
                               fontSize: isSmallScreen ? 14 : 16,
@@ -162,7 +165,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                                       },
                                     ),
                                     Text(
-                                      'Back to Mobile Number',
+                                      AppStrings.getString(
+                                        'back_to_mobile_number',
+                                        langCode,
+                                      ),
                                       style: AppTheme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: AppTheme.primaryColor,
@@ -174,8 +180,11 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                               ),
                             Text(
                               _showOTPField
-                                  ? 'Enter OTP'
-                                  : 'Mobile Verification',
+                                  ? AppStrings.getString('enter_otp', langCode)
+                                  : AppStrings.getString(
+                                      'mobile_verification',
+                                      langCode,
+                                    ),
                               style: AppTheme.textTheme.headlineLarge?.copyWith(
                                 fontSize: isSmallScreen ? 20 : 22,
                               ),
@@ -184,8 +193,17 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                             const SizedBox(height: 8),
                             Text(
                               _showOTPField
-                                  ? 'Enter the 6-digit OTP sent to ${_mobileController.text}'
-                                  : 'Enter your mobile number to receive OTP',
+                                  ? AppStrings.getString(
+                                      'enter_otp_message',
+                                      langCode,
+                                    ).replaceFirst(
+                                      '{number}',
+                                      _mobileController.text,
+                                    )
+                                  : AppStrings.getString(
+                                      'enter_mobile_number',
+                                      langCode,
+                                    ),
                               style: AppTheme.textTheme.bodyMedium?.copyWith(
                                 color: AppTheme.textSecondaryColor,
                               ),
@@ -247,18 +265,30 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
         LengthLimitingTextInputFormatter(10), // Only 10 digits
       ],
       decoration: InputDecoration(
-        labelText: 'Mobile Number',
-        hintText: 'Enter your 10-digit mobile number',
+        labelText: AppStrings.getString(
+          'mobile_number',
+          SharedPrefsService.getLanguage() ?? 'en',
+        ),
+        hintText: AppStrings.getString(
+          'enter_mobile_number_hint',
+          SharedPrefsService.getLanguage() ?? 'en',
+        ),
         prefixText: '+91 ',
         prefixIcon: const Icon(Icons.phone, color: AppTheme.primaryColor),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Please enter your mobile number';
+          return AppStrings.getString(
+            'please_enter_mobile_number',
+            SharedPrefsService.getLanguage() ?? 'en',
+          );
         }
         if (value.length != 10) {
-          return 'Mobile number must be 10 digits';
+          return AppStrings.getString(
+            'mobile_number_must_be_10_digits',
+            SharedPrefsService.getLanguage() ?? 'en',
+          );
         }
         return null;
       },
@@ -274,8 +304,14 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
         LengthLimitingTextInputFormatter(6),
       ],
       decoration: InputDecoration(
-        labelText: 'OTP',
-        hintText: 'Enter 6-digit OTP',
+        labelText: AppStrings.getString(
+          'otp',
+          SharedPrefsService.getLanguage() ?? 'en',
+        ),
+        hintText: AppStrings.getString(
+          'enter_otp_hint',
+          SharedPrefsService.getLanguage() ?? 'en',
+        ),
         prefixIcon: const Icon(
           Icons.lock_outline,
           color: AppTheme.primaryColor,
@@ -284,7 +320,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
       ),
       validator: (value) {
         if (value == null || value.isEmpty || value.length != 6) {
-          return 'Please enter a valid 6-digit OTP';
+          return AppStrings.getString(
+            'please_enter_valid_otp',
+            SharedPrefsService.getLanguage() ?? 'en',
+          );
         }
         return null;
       },
@@ -314,7 +353,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                 ),
               )
             : Text(
-                'Send OTP',
+                AppStrings.getString('send_otp', langCode),
                 style: AppTheme.textTheme.labelLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -347,7 +386,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                 ),
               )
             : Text(
-                'Verify OTP',
+                AppStrings.getString('verify_otp', langCode),
                 style: AppTheme.textTheme.labelLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -361,7 +400,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
     return TextButton(
       onPressed: _isLoading ? null : _resendOTP,
       child: Text(
-        'Resend OTP',
+        AppStrings.getString('resend_otp', langCode),
         style: AppTheme.textTheme.labelLarge?.copyWith(
           color: AppTheme.primaryColor,
           fontWeight: FontWeight.w600,
@@ -390,7 +429,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
               ),
               const SizedBox(width: 8),
               Text(
-                'Demo Information',
+                AppStrings.getString('demo_information', langCode),
                 style: AppTheme.textTheme.titleSmall?.copyWith(
                   color: AppTheme.infoColor,
                   fontWeight: FontWeight.w600,
@@ -401,7 +440,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'For demo purposes, you can use any 10-digit mobile number. The OTP will be "123456" for verification.',
+            AppStrings.getString('demo_information_message', langCode),
             style: AppTheme.textTheme.bodySmall?.copyWith(
               color: AppTheme.textSecondaryColor,
               fontSize: isSmallScreen ? 11 : 12,
