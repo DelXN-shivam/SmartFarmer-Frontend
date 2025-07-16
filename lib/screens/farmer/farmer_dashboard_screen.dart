@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smart_farmer/screens/common/about_screen.dart';
+import 'package:smart_farmer/screens/common/hepl_support_screen.dart';
+import 'package:smart_farmer/screens/common/notifications_screen.dart';
 import '../../blocs/farmer/farmer_bloc.dart';
 import '../../blocs/farmer/farmer_event.dart';
 import '../../blocs/farmer/farmer_state.dart';
@@ -1582,7 +1585,11 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             null,
             trailing: Switch(
               value: true,
-              onChanged: (value) {},
+              onChanged: (value) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => NotificationScreen()),
+                );
+              },
               activeColor: const Color(0xFF4CAF50),
             ),
           ),
@@ -1591,14 +1598,26 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             Icons.help_rounded,
             AppStrings.getString('help_support', langCode),
             null,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HelpSupportScreen(),
+                ),
+              );
+            },
           ),
           _buildDivider(),
           _buildSettingTile(
             Icons.info_rounded,
             AppStrings.getString('about', langCode),
             null,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AboutScreen()),
+              );
+            },
           ),
         ],
       ),

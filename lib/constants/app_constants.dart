@@ -2,6 +2,7 @@ class AppConstants {
   // App Information
   static const String appName = 'SmartFarming';
   static const String appVersion = '1.0.0';
+  static const String buildNumber = '1.0.1'; //suraj added for aboutscreen
 
   // User Roles
   static const String roleFarmer = 'farmer';
