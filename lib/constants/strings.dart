@@ -1540,6 +1540,25 @@ class AppStrings {
       'Mahagaon': 'महागाव',
       'Ralegaon': 'रालेगाव',
       'Babulgaon': 'बाबुलगाव',
+
+      // help and support
+      // 'help_support': 'Help & Support',
+      'how_can_we_help': 'How can we help you?',
+      'help_support_description':
+          'We\'re here to assist you with any questions or issues you may have.',
+      'quick_help': 'Quick Help',
+      'faqs': 'FAQs',
+      'video_tutorials': 'Video Tutorials',
+      'user_guide': 'User Guide',
+      'contact_support': 'Contact Support',
+      'email_us': 'Email Us',
+      'call_us': 'Call Us',
+      'live_chat': 'Live Chat',
+      'available_24_7': 'Available 24/7',
+      'community': 'Community',
+      'community_forum': 'Community Forum',
+      'facebook_group': 'Facebook Group',
+      'report_problem': 'Report a Problem',
     },
   };
 
