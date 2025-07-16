@@ -70,7 +70,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:smart_farmer/screens/auth/otp_verification_screen.dart';
-import 'package:smart_farmer/screens/farmer/crop_details_form.dart';
+import 'package:smart_farmer/screens/farmer/crop_add_edit__form.dart';
 
 import 'constants/app_constants.dart';
 import 'constants/strings.dart';

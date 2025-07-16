@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../farmer/crop_details_form.dart';
+import '../farmer/crop_add_edit__form.dart';
 import '../../data/crop_data.dart';
 
 class CropDetailScreen extends StatelessWidget {
