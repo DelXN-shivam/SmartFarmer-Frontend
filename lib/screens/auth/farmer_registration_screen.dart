@@ -6,9 +6,14 @@ import '../../services/auth_service.dart';
 import '../../constants/strings.dart';
 import '../../services/shared_prefs_service.dart';
 import '../../constants/app_constants.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../models/farmer.dart';
+import '../../services/database_service.dart';
 
 class FarmerRegistrationScreen extends StatefulWidget {
-  const FarmerRegistrationScreen({super.key});
+  final String? initialContact;
+  const FarmerRegistrationScreen({Key? key, this.initialContact})
+    : super(key: key);
 
   @override
   State<FarmerRegistrationScreen> createState() =>
@@ -18,7 +23,7 @@ class FarmerRegistrationScreen extends StatefulWidget {
 class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  // final _emailController = TextEditingController();
   final _contactController = TextEditingController();
   final _aadhaarController = TextEditingController();
   final _villageController = TextEditingController();
@@ -41,6 +46,9 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: 0);
+    if (widget.initialContact != null) {
+      _contactController.text = widget.initialContact!;
+    }
     _pageController.addListener(() {
       final page = _pageController.page?.round() ?? 0;
       if (page != _currentStep) {
@@ -52,7 +60,7 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
+    // _emailController.dispose();
     _contactController.dispose();
     _aadhaarController.dispose();
     _villageController.dispose();
@@ -321,23 +329,22 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
           ),
           SizedBox(height: isSmallScreen ? 12 : 16),
 
-          _buildTextField(
-            controller: _emailController,
-            label: AppStrings.getString('email', langCode),
-            hint: AppStrings.getString('enter_email', langCode),
-            icon: Icons.email,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return AppStrings.getString('email_required', langCode);
-              }
-              if (!value.contains('@')) {
-                return AppStrings.getString('invalid_email', langCode);
-              }
-              return null;
-            },
-          ),
-          SizedBox(height: isSmallScreen ? 12 : 16),
-
+          // _buildTextField(
+          //   controller: _emailController,
+          //   label: AppStrings.getString('email', langCode),
+          //   hint: AppStrings.getString('enter_email', langCode),
+          //   icon: Icons.email,
+          //   validator: (value) {
+          //     if (value == null || value.isEmpty) {
+          //       return AppStrings.getString('email_required', langCode);
+          //     }
+          //     if (!value.contains('@')) {
+          //       return AppStrings.getString('invalid_email', langCode);
+          //     }
+          //     return null;
+          //   },
+          // ),
+          // SizedBox(height: isSmallScreen ? 12 : 16),
           _buildTextField(
             controller: _contactController,
             label: AppStrings.getString('contact_number', langCode),
@@ -736,7 +743,7 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
       case 0:
         return _formKey.currentState!.validate() &&
             _nameController.text.isNotEmpty &&
-            _emailController.text.isNotEmpty &&
+            // _emailController.text.isNotEmpty &&
             _contactController.text.isNotEmpty &&
             _aadhaarController.text.isNotEmpty;
       case 1:
@@ -751,58 +758,98 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
     }
   }
 
-  //
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final result = await AuthService.registerFarmer(
-        name: _nameController.text.trim(),
-        mobileNumber: _contactController.text.trim(),
-        contactNumber: _contactController.text.trim(),
-        aadhaarNumber: _aadhaarController.text.trim(),
-        village: _villageController.text.trim(),
-        landmark: _landmarkController.text.trim(),
-        taluka: _talukaController.text.trim(),
-        district: _districtController.text.trim(),
-        pincode: _pincodeController.text.trim(),
+      // Request location permission and get current position
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permissions are denied');
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied.');
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
 
+      final result = await AuthService.registerFarmerWithContact(
+        contact: _contactController.text.trim(),
+        name: _nameController.text.trim(),
+        aadhaarNumber: _aadhaarController.text.trim(),
+        village: _villageController.text.trim(),
+        landMark: _landmarkController.text.trim(),
+        taluka: _talukaController.text.trim(),
+        district: _districtController.text.trim(),
+        state: _stateController.text.trim(),
+        pincode: _pincodeController.text.trim(),
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+
+      print('Backend registration result:');
+      print(result);
+
       if (result['success']) {
+        await AuthService.saveCurrentUserFromBackend(result);
+        // Insert the new farmer into the local database
+        final farmerJson = result['farmer'];
+        final farmer = Farmer(
+          id: farmerJson['_id'],
+          name: farmerJson['name'],
+          contactNumber: farmerJson['contact'],
+          aadhaarNumber: farmerJson['aadhaarNumber'],
+          village: farmerJson['village'],
+          landmark: farmerJson['landMark'],
+          taluka: farmerJson['taluka'],
+          district: farmerJson['district'],
+          pincode: farmerJson['pincode'],
+          createdAt: DateTime.parse(farmerJson['createdAt']),
+          updatedAt: DateTime.parse(farmerJson['updatedAt']),
+        );
+        await DatabaseService.deleteAllFarmers();
+        await DatabaseService.insertFarmer(farmer);
+        // TODO: Update state management with new user profile here, e.g.:
+        // context.read<UserProvider>().setUser(result['farmer']);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message']),
+              content: Text(result['message'] ?? 'Registration successful!'),
               backgroundColor: AppTheme.successColor,
             ),
           );
-          // Navigate to FarmerDashboardScreen and remove all previous routes
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => FarmerDashboardScreen()),
-            (route) => false, // This removes all previous routes
+            (route) => false,
           );
         }
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message']),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Registration failed: $e'),
+            content: Text(result['message'] ?? 'Registration failed'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Registration failed: ${e.toString()}'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

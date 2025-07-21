@@ -6,28 +6,12 @@ class SmartFarmScreen extends StatefulWidget {
 }
 
 class _SmartFarmScreenState extends State<SmartFarmScreen> {
-  String? selectedCropType;
-  String? selectedSoilType;
   String? selectedIrrigationMethod;
   DateTime? selectedSowingDate;
   TextEditingController areaController = TextEditingController();
   TextEditingController yieldController = TextEditingController();
   TextEditingController historyController = TextEditingController();
 
-  final List<String> cropTypes = [
-    'Rice',
-    'Wheat',
-    'Cotton',
-    'Sugarcane',
-    'Maize',
-  ];
-  final List<String> soilTypes = [
-    'Alluvial',
-    'Black',
-    'Red',
-    'Laterite',
-    'Desert',
-  ];
   final List<String> irrigationMethods = [
     'Drip',
     'Sprinkler',
@@ -97,23 +81,7 @@ class _SmartFarmScreenState extends State<SmartFarmScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 24),
-            _buildDropdownField(
-              '🌾 Crop Type',
-              'Select crop type',
-              selectedCropType,
-              cropTypes,
-              (value) => setState(() => selectedCropType = value),
-            ),
-            SizedBox(height: 16),
             _buildAreaField(),
-            SizedBox(height: 16),
-            _buildDropdownField(
-              '🌱 Soil Type',
-              'Select soil type',
-              selectedSoilType,
-              soilTypes,
-              (value) => setState(() => selectedSoilType = value),
-            ),
             SizedBox(height: 16),
             _buildDateField(),
             SizedBox(height: 16),
@@ -593,9 +561,7 @@ class _SmartFarmScreenState extends State<SmartFarmScreen> {
   }
 
   void _submitForm() {
-    if (selectedCropType == null ||
-        areaController.text.isEmpty ||
-        selectedSoilType == null ||
+    if (areaController.text.isEmpty ||
         selectedSowingDate == null ||
         yieldController.text.isEmpty ||
         selectedIrrigationMethod == null) {
@@ -617,8 +583,6 @@ class _SmartFarmScreenState extends State<SmartFarmScreen> {
 
     // Clear form
     setState(() {
-      selectedCropType = null;
-      selectedSoilType = null;
       selectedIrrigationMethod = null;
       selectedSowingDate = null;
     });

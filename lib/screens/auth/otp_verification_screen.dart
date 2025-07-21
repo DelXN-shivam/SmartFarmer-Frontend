@@ -10,6 +10,11 @@ import '../../constants/app_theme.dart';
 import '../../services/shared_prefs_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
+import '../../models/farmer.dart';
+import '../../screens/farmer/farmer_dashboard_screen.dart';
+import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
 
 class MobileOTPScreen extends StatefulWidget {
   const MobileOTPScreen({super.key});
@@ -564,39 +569,111 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
     }
 
     // Fire the network request in the background (no loading spinner, no UI feedback)
-    final url = Uri.parse(
-      'https://smart-farmer-backend.vercel.app/api/farmer/contact/?contact=${_mobileController.text.trim()}',
-    );
-    http
-        .post(url)
-        .then((response) {
-          log("Response status: ${response.statusCode}");
-          log("Response body: ${response.body}");
-          try {
-            final data = json.decode(response.body);
-            log("Decoded Body: $data");
-          } catch (e) {
-            log("Error decoding response body: $e");
-          }
-        })
-        .catchError((e) {
-          log("Network error: $e");
-        });
+    // final url = Uri.parse(
+    //   'https://smart-farmer-backend.vercel.app/api/farmer/contact/?contact=${_mobileController.text.trim()}',
+    // );
+    // http
+    //     .post(url)
+    //     .then((response) {
+    //       log("Response status: ${response.statusCode}");
+    //       log("Response body: ${response.body}");
+    //       try {
+    //         final data = json.decode(response.body);
+    //         log("Decoded Body: $data");
+    //       } catch (e) {
+    //         log("Error decoding response body: $e");
+    //       }
+    //     })
+    //     .catchError((e) {
+    //       log("Network error: $e");
+    //     });
   }
 
   Future<void> _verifyOTP() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
-    // Simulate verification delay
-    await Future.delayed(const Duration(seconds: 1));
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => LanguageSelectionScreen()));
-
-    if (mounted) {
-      setState(() => _isLoading = false);
+    try {
+      // Call the login API (fetch farmer by contact)
+      final url = Uri.parse(
+        'https://smart-farmer-backend.vercel.app/api/farmer/contact?contact=${_mobileController.text.trim()}',
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['farmer'] != null && data['token'] != null) {
+          // Save to shared preferences (like registration)
+          await AuthService.saveCurrentUserFromBackend({
+            'success': true,
+            'farmer': data['farmer'],
+            'token': data['token'],
+          });
+          // Save to local database
+          final farmerJson = data['farmer'];
+          final farmer = Farmer(
+            id: farmerJson['_id'],
+            name: farmerJson['name'],
+            contactNumber: farmerJson['contact'],
+            aadhaarNumber: farmerJson['aadhaarNumber'],
+            village: farmerJson['village'],
+            landmark: farmerJson['landMark'],
+            taluka: farmerJson['taluka'],
+            district: farmerJson['district'],
+            pincode: farmerJson['pincode'],
+            createdAt: DateTime.parse(farmerJson['createdAt']),
+            updatedAt: DateTime.parse(farmerJson['updatedAt']),
+          );
+          await DatabaseService.deleteAllFarmers();
+          await DatabaseService.insertFarmer(farmer);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(data['message'] ?? 'Login successful!'),
+                backgroundColor: AppTheme.successColor,
+              ),
+            );
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => FarmerDashboardScreen()),
+              (route) => false,
+            );
+          }
+        }
+      } else {
+        // if (mounted) {
+        //   ScaffoldMessenger.of(context).showSnackBar(
+        //     SnackBar(
+        //       // content: Text('Login failed: ${response.body}'),
+        //       content: Text(
+        //         json.decode(response.body)['message'] ?? 'Login failed',
+        //       ),
+        //       backgroundColor: AppTheme.errorColor,
+        //     ),
+        //   );
+        // }
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => FarmerRegistrationScreen(
+                initialContact: _mobileController.text.trim(),
+              ),
+            ),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login failed: ${e.toString()}'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -617,144 +694,5 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
         ),
       );
     }
-  }
-
-  Widget _buildRoleSelection(
-    String langCode,
-    bool isSmallScreen,
-    bool isPortrait,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Select Your Role',
-          style: AppTheme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: isSmallScreen ? 16 : 18,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Choose how you want to use SmartFarmer',
-          style: AppTheme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontSize: isSmallScreen ? 12 : 14,
-          ),
-        ),
-        SizedBox(height: isSmallScreen ? 12 : 16),
-        isPortrait && isSmallScreen
-            ? Column(
-                children: [
-                  _buildRoleChip(
-                    AppConstants.roleFarmer,
-                    Icons.person,
-                    'Farmer',
-                    'Manage crops & profile',
-                    isSmallScreen,
-                  ),
-                ],
-              )
-            : GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: isPortrait ? 3 : 1,
-                childAspectRatio: isPortrait ? 0.8 : 3.5,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                children: [
-                  _buildRoleChip(
-                    AppConstants.roleFarmer,
-                    Icons.person,
-                    'Farmer',
-                    'Manage crops & profile',
-                    isSmallScreen,
-                  ),
-                ],
-              ),
-      ],
-    );
-  }
-
-  Widget _buildRoleChip(
-    String role,
-    IconData icon,
-    String title,
-    String subtitle,
-    bool isSmallScreen,
-  ) {
-    final isSelected = selectedRole == role;
-
-    return GestureDetector(
-      onTap: () => setState(() => selectedRole = role),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          vertical: isSmallScreen ? 12 : 16,
-          horizontal: isSmallScreen ? 8 : 12,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
-            width: isSelected ? 2 : 1.5,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Colors.white.withOpacity(0.2)
-                    : AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: isSelected ? Colors.white : AppTheme.primaryColor,
-                size: isSmallScreen ? 20 : 24,
-              ),
-            ),
-            SizedBox(height: isSmallScreen ? 6 : 8),
-            Text(
-              title,
-              style: AppTheme.textTheme.titleMedium?.copyWith(
-                color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
-                fontWeight: FontWeight.w600,
-                fontSize: isSmallScreen ? 14 : 16,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Flexible(
-              child: Text(
-                subtitle,
-                style: AppTheme.textTheme.labelSmall?.copyWith(
-                  color: isSelected
-                      ? Colors.white70
-                      : AppTheme.textSecondaryColor,
-                  fontSize: isSmallScreen ? 10 : 12,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

@@ -39,10 +39,6 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-
-    ndk {
-        abiFilters 'x86', 'armeabi-v7a', 'x86_64', 'arm64-v8a'
-    }
 }
 
 flutter {

@@ -1,76 +1,7 @@
-// import 'package:flutter/material.dart';
-// import 'package:smart_farmer/screens/farmer/ui_farmer_side.dart';
-// import 'package:smart_farmer/screens/verifier/ui_verifier_side.dart';
-
-// void main() {
-//   runApp(MyApp());
-// }
-
-// class MyApp extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'SmartFarm',
-//       debugShowCheckedModeBanner: false,
-//       theme: ThemeData(primarySwatch: Colors.green, fontFamily: 'Roboto'),
-//       home: MainScreen(),
-//     );
-//   }
-// }
-
-// class MainScreen extends StatefulWidget {
-//   @override
-//   _MainScreenState createState() => _MainScreenState();
-// }
-
-// class _MainScreenState extends State<MainScreen> {
-//   int _currentIndex = 0;
-//   PageController _pageController = PageController();
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: PageView(
-//         controller: _pageController,
-//         onPageChanged: (index) {
-//           setState(() {
-//             _currentIndex = index;
-//           });
-//         },
-//         children: [ValidatorDashboard(), SmartFarmScreen()],
-//       ),
-//       bottomNavigationBar: BottomNavigationBar(
-//         currentIndex: _currentIndex,
-//         onTap: (index) {
-//           setState(() {
-//             _currentIndex = index;
-//           });
-//           _pageController.animateToPage(
-//             index,
-//             duration: Duration(milliseconds: 300),
-//             curve: Curves.easeInOut,
-//           );
-//         },
-//         items: [
-//           BottomNavigationBarItem(
-//             icon: Icon(Icons.dashboard),
-//             label: 'Dashboard',
-//           ),
-//           BottomNavigationBarItem(
-//             icon: Icon(Icons.agriculture),
-//             label: 'Farm Input',
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:smart_farmer/screens/auth/otp_verification_screen.dart';
-import 'package:smart_farmer/screens/farmer/crop_add_edit__form.dart';
 
 import 'constants/app_constants.dart';
 import 'constants/strings.dart';

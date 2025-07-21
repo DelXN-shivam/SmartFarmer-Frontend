@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../constants/strings.dart';
-import '../../constants/app_constants.dart';
 import '../../services/shared_prefs_service.dart';
 
 class NotificationScreen extends StatefulWidget {

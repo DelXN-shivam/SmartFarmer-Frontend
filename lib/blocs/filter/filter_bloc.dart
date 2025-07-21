@@ -8,57 +8,10 @@ class FilterBloc extends Bloc<FilterEvent, FilterState> {
     on<LoadLocations>((event, emit) async {
       emit(FilterLoading());
       try {
-        final farmers = await DatabaseService.getAllFarmers();
+        // Remove: final farmers = await DatabaseService.getAllFarmers();
+        // Remove: logic for villages, talukas, districts from farmers
 
-        final villages = farmers.map((f) => f.village).toSet().toList()..sort();
-        final talukas = farmers.map((f) => f.taluka).toSet().toList()..sort();
-        final districts = farmers.map((f) => f.district).toSet().toList()
-          ..sort();
-
-        emit(
-          FilterLoaded(
-            villages: villages,
-            talukas: talukas,
-            districts: districts,
-          ),
-        );
-      } catch (e) {
-        emit(FilterError(e.toString()));
-      }
-    });
-
-    on<FilterByLocation>((event, emit) async {
-      try {
-        final currentState = state;
-        if (currentState is FilterLoaded) {
-          emit(
-            FilterLoaded(
-              villages: currentState.villages,
-              talukas: currentState.talukas,
-              districts: currentState.districts,
-              selectedVillage: event.village,
-              selectedTaluka: event.taluka,
-              selectedDistrict: event.district,
-            ),
-          );
-        }
-      } catch (e) {
-        emit(FilterError(e.toString()));
-      }
-    });
-
-    on<ClearFilter>((event, emit) async {
-      try {
-        final currentState = state;
-        if (currentState is FilterLoaded) {
-          emit(
-            FilterLoaded(
-              villages: currentState.villages,
-              talukas: currentState.talukas,
-              districts: currentState.districts,
-            ),
-          );
-        }
+        emit(FilterLoaded(villages: [], talukas: [], districts: []));
       } catch (e) {
         emit(FilterError(e.toString()));
       }

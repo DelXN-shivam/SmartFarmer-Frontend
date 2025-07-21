@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
 import '../models/farmer.dart';
 import 'database_service.dart';
+import 'package:http/http.dart' as http;
 
 class AuthService {
   static const String _keyIsLoggedIn = 'is_logged_in';
@@ -49,20 +50,7 @@ class AuthService {
         case AppConstants.roleFarmer:
           developer.log('Checking farmer credentials...', name: 'AuthService');
           // For farmers, check in database
-          final farmers = await DatabaseService.getAllFarmers();
-          developer.log(
-            'Found ${farmers.length} farmers in database',
-            name: 'AuthService',
-          );
-
-          final farmer = farmers
-              .where(
-                (f) =>
-                    f.contactNumber ==
-                        mobileNumber || // Using contact number as mobile number for demo
-                    f.id == mobileNumber, // Also allow farmer ID login for demo
-              )
-              .firstOrNull;
+          final farmer = await DatabaseService.getFarmerById(mobileNumber);
 
           if (farmer != null) {
             developer.log(
@@ -187,49 +175,8 @@ class AuthService {
 
       developer.log('Input validation passed', name: 'AuthService');
 
-      // Check if farmer already exists with this mobile number or Aadhaar
-      developer.log('Checking for existing farmers...', name: 'AuthService');
-      final existingFarmers = await DatabaseService.getAllFarmers();
-      developer.log(
-        'Found ${existingFarmers.length} existing farmers',
-        name: 'AuthService',
-      );
-
-      final existingByMobile = existingFarmers
-          .where((f) => f.contactNumber == mobileNumber)
-          .isNotEmpty;
-      final existingByAadhaar = existingFarmers
-          .where((f) => f.aadhaarNumber == aadhaarNumber)
-          .isNotEmpty;
-
-      if (existingByMobile) {
-        developer.log(
-          'Registration failed: Mobile number already exists',
-          name: 'AuthService',
-        );
-        return {
-          'success': false,
-          'message': 'A farmer with this mobile number already exists',
-        };
-      }
-
-      if (existingByAadhaar) {
-        developer.log(
-          'Registration failed: Aadhaar number already exists',
-          name: 'AuthService',
-        );
-        return {
-          'success': false,
-          'message': 'A farmer with this Aadhaar number already exists',
-        };
-      }
-
-      developer.log(
-        'No existing farmers found with same mobile number or Aadhaar',
-        name: 'AuthService',
-      );
-
-      // Create new farmer
+      // Remove check for existing farmers by mobile/Aadhaar
+      // Always proceed to create new farmer and delete all before insert
       final farmerId = 'farmer_${DateTime.now().millisecondsSinceEpoch}';
       developer.log('Generated farmer ID: $farmerId', name: 'AuthService');
 
@@ -265,6 +212,9 @@ class AuthService {
       developer.log('  Pincode: ${farmer.pincode}', name: 'AuthService');
       developer.log('  Created At: ${farmer.createdAt}', name: 'AuthService');
       developer.log('  Updated At: ${farmer.updatedAt}', name: 'AuthService');
+
+      // Delete all existing farmers before inserting the new one
+      await DatabaseService.deleteAllFarmers();
 
       developer.log('Inserting farmer into database...', name: 'AuthService');
       final result = await DatabaseService.insertFarmer(farmer);
@@ -341,6 +291,55 @@ class AuthService {
     }
   }
 
+  // Register new farmer with backend (contact API)
+  static Future<Map<String, dynamic>> registerFarmerWithContact({
+    required String contact,
+    required String name,
+    required String aadhaarNumber,
+    required String village,
+    required String landMark,
+    required String taluka,
+    required String district,
+    required String state,
+    required String pincode,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final url = Uri.parse(
+      'https://smart-farmer-backend.vercel.app/api/farmer/register/contact',
+    );
+    final body = jsonEncode({
+      "contact": contact,
+      "name": name,
+      "aadhaarNumber": aadhaarNumber,
+      "village": village,
+      "landMark": landMark,
+      "taluka": taluka,
+      "district": district,
+      "state": state,
+      "pincode": pincode,
+      "location": {"latitude": latitude, "longitude": longitude},
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          "success": false,
+          "message": "Registration failed: \n ${response.body}",
+        };
+      }
+    } catch (e) {
+      return {"success": false, "message": "Registration failed: $e"};
+    }
+  }
+
   // Logout
   static Future<void> logout() async {
     try {
@@ -349,9 +348,9 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyIsLoggedIn);
       await prefs.remove(_keyUserId);
-      await prefs.remove(_keyUserRole);
       await prefs.remove(_keyUserData);
       await prefs.remove(_keyUserEmail);
+      await prefs.remove('token'); // Clear token
 
       developer.log(
         'Logout successful - all login data cleared from SharedPreferences',
@@ -377,37 +376,18 @@ class AuthService {
     }
   }
 
-  // Get current user data
-  static Future<Map<String, dynamic>?> getCurrentUser() async {
-    try {
-      developer.log('AuthService.getCurrentUser called', name: 'AuthService');
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString(_keyUserData);
-      if (userDataString != null) {
-        final userData = json.decode(userDataString);
-        developer.log('Current user data: $userData', name: 'AuthService');
-        return userData;
-      } else {
-        developer.log('No current user data found', name: 'AuthService');
-        return null;
-      }
-    } catch (e) {
-      developer.log('getCurrentUser error: $e', name: 'AuthService');
-      return null;
-    }
-  }
-
-  // Get user role
-  static Future<String?> getUserRole() async {
-    try {
-      developer.log('AuthService.getUserRole called', name: 'AuthService');
-      final prefs = await SharedPreferences.getInstance();
-      final role = prefs.getString(_keyUserRole);
-      developer.log('User role: $role', name: 'AuthService');
-      return role;
-    } catch (e) {
-      developer.log('getUserRole error: $e', name: 'AuthService');
-      return null;
+  // Save new farmer data and token after registration
+  static Future<void> saveCurrentUserFromBackend(
+    Map<String, dynamic> response,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (response['success'] == true && response['farmer'] != null) {
+      final farmer = response['farmer'];
+      await prefs.setBool(_keyIsLoggedIn, true);
+      await prefs.setString(_keyUserId, farmer['_id'] ?? '');
+      await prefs.setString(_keyUserData, json.encode(farmer));
+      await prefs.setString(_keyUserEmail, farmer['contact'] ?? '');
+      await prefs.setString('token', response['token'] ?? '');
     }
   }
 

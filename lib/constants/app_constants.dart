@@ -9,38 +9,13 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'smart_farmer.db';
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 
   // SharedPreferences Keys
   static const String keyLanguage = 'language';
   static const String keyUserRole = 'user_role';
   static const String keyUserId = 'user_id';
   static const String keyIsLoggedIn = 'is_logged_in';
-
-  // Crop Types
-  static const List<String> cropTypes = [
-    'Wheat',
-    'Rice',
-    'Maize',
-    'Cotton',
-    'Sugarcane',
-    'Pulses',
-    'Oilseeds',
-    'Vegetables',
-    'Fruits',
-    'Other',
-  ];
-
-  // Soil Types
-  static const List<String> soilTypes = [
-    'Clay',
-    'Sandy',
-    'Loamy',
-    'Silt',
-    'Peaty',
-    'Chalky',
-    'Other',
-  ];
 
   // Crop Lifespan in Days (for AI insights)
   static const Map<String, int> cropLifespan = {
@@ -72,6 +47,7 @@ class AppConstants {
       'Pathardi',
       'Parner',
       'Jamkhed',
+      "Karjat",
     ],
     'Akola': ['Akola', 'Balapur', 'Patur', 'Telhara', 'Akot', 'Murtijapur'],
     'Amravati': [

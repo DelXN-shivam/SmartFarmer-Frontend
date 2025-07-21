@@ -150,41 +150,6 @@ class AIInsightsWidget extends StatelessWidget {
       );
     }
 
-    // Add soil type based insights
-    if (crop.soilType == 'Clay') {
-      insights.add(
-        'Clay soil retains moisture well. Adjust irrigation schedule accordingly.',
-      );
-    } else if (crop.soilType == 'Sandy') {
-      insights.add(
-        'Sandy soil requires more frequent irrigation and nutrient application.',
-      );
-    } else if (crop.soilType == 'Loamy') {
-      insights.add(
-        'Loamy soil is ideal for most crops. Maintain balanced nutrient levels.',
-      );
-    }
-
-    // Add crop type specific insights
-    if (crop.cropType == 'Wheat') {
-      insights.add(
-        'Wheat requires cool temperatures during growth. Monitor for rust diseases.',
-      );
-    } else if (crop.cropType == 'Rice') {
-      insights.add(
-        'Rice needs consistent water levels. Check for water management.',
-      );
-    } else if (crop.cropType == 'Maize') {
-      insights.add(
-        'Maize benefits from nitrogen-rich fertilizers during growth.',
-      );
-    }
-
-    // Add random AI insights
-    final randomInsights = AppConstants.aiInsights;
-    final randomInsight = randomInsights[random.nextInt(randomInsights.length)];
-    insights.add(randomInsight);
-
-    return insights.take(4).toList(); // Limit to 4 insights
+    return insights;
   }
 }

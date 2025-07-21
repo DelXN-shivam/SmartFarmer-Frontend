@@ -97,7 +97,7 @@ class CropCardWidget extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                '${AppStrings.getString('crop_type', langCode)}: ${crop.cropType}',
+                                '${AppStrings.getString('sowing_date', langCode)}: ${_formatDate(crop.sowingDate)}',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: isDarkMode
                                       ? Colors.grey[400]
@@ -135,36 +135,30 @@ class CropCardWidget extends StatelessWidget {
                               context,
                             ).animate(delay: (150 + 50 * 0).ms).fadeIn(),
                             _buildInfoRow(
-                              Icons.terrain,
-                              '${AppStrings.getString('soil_type', langCode)}:',
-                              crop.soilType,
-                              context,
-                            ).animate(delay: (150 + 50 * 1).ms).fadeIn(),
-                            _buildInfoRow(
                               Icons.calendar_today,
                               '${AppStrings.getString('sowing_date', langCode)}:',
                               _formatDate(crop.sowingDate),
                               context,
-                            ).animate(delay: (150 + 50 * 2).ms).fadeIn(),
+                            ).animate(delay: (150 + 50 * 1).ms).fadeIn(),
                             _buildInfoRow(
                               Icons.timelapse,
                               '${AppStrings.getString('crop_age', langCode)}:',
                               '${crop.cropAgeInDays} ${AppStrings.getString('days_old', langCode)}',
                               context,
-                            ).animate(delay: (150 + 50 * 3).ms).fadeIn(),
+                            ).animate(delay: (150 + 50 * 2).ms).fadeIn(),
                             _buildInfoRow(
                               Icons.timeline,
                               '${AppStrings.getString('growth_stage', langCode)}:',
                               crop.growthStage,
                               context,
-                            ).animate(delay: (150 + 50 * 4).ms).fadeIn(),
+                            ).animate(delay: (150 + 50 * 3).ms).fadeIn(),
                             if (crop.daysToHarvest > 0)
                               _buildInfoRow(
                                 Icons.agriculture,
                                 'Days to Harvest:',
                                 '${crop.daysToHarvest} ${AppStrings.getString('days_to_harvest', langCode)}',
                                 context,
-                              ).animate(delay: (150 + 50 * 5).ms).fadeIn(),
+                              ).animate(delay: (150 + 50 * 4).ms).fadeIn(),
                           ],
                         ),
                       ),
@@ -433,20 +427,7 @@ class CropCardWidget extends StatelessWidget {
   }
 
   IconData _getCropIcon() {
-    switch (crop.cropType.toLowerCase()) {
-      case 'wheat':
-        return Icons.grain;
-      case 'rice':
-        return Icons.rice_bowl;
-      case 'maize':
-        return Icons.agriculture;
-      case 'cotton':
-        return Icons.agriculture;
-      case 'sugarcane':
-        return Icons.grass;
-      default:
-        return Icons.agriculture;
-    }
+    return Icons.agriculture;
   }
 
   Color _getStatusColor() {

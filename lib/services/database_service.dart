@@ -21,6 +21,19 @@ class DatabaseService {
       path,
       version: AppConstants.databaseVersion,
       onCreate: _onCreate,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            "ALTER TABLE crops ADD COLUMN expected_first_harvest_date TEXT",
+          );
+          await db.execute(
+            "ALTER TABLE crops ADD COLUMN expected_last_harvest_date TEXT",
+          );
+          await db.execute(
+            "ALTER TABLE crops ADD COLUMN image_public_ids TEXT",
+          );
+        }
+      },
     );
   }
 
@@ -49,8 +62,6 @@ class DatabaseService {
         farmer_id TEXT NOT NULL,
         crop_name TEXT NOT NULL,
         area REAL NOT NULL,
-        crop_type TEXT NOT NULL,
-        soil_type TEXT NOT NULL,
         sowing_date TEXT NOT NULL,
         expected_harvest_date TEXT NOT NULL,
         expected_yield REAL NOT NULL,
@@ -124,29 +135,6 @@ class DatabaseService {
     }
   }
 
-  static Future<List<Farmer>> getAllFarmers() async {
-    try {
-      developer.log(
-        'DatabaseService.getAllFarmers called',
-        name: 'DatabaseService',
-      );
-      final db = await database;
-      final List<Map<String, dynamic>> maps = await db.query('farmers');
-      final farmers = List.generate(
-        maps.length,
-        (i) => Farmer.fromMap(maps[i]),
-      );
-      developer.log(
-        'Retrieved ${farmers.length} farmers from database',
-        name: 'DatabaseService',
-      );
-      return farmers;
-    } catch (e) {
-      developer.log('Error getting all farmers: $e', name: 'DatabaseService');
-      rethrow;
-    }
-  }
-
   static Future<Farmer?> getFarmerById(String id) async {
     try {
       developer.log(
@@ -177,48 +165,6 @@ class DatabaseService {
     }
   }
 
-  static Future<List<Farmer>> searchFarmers(String query) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'farmers',
-      where: 'name LIKE ? OR aadhaar_number LIKE ?',
-      whereArgs: ['%$query%', '%$query%'],
-    );
-    return List.generate(maps.length, (i) => Farmer.fromMap(maps[i]));
-  }
-
-  static Future<List<Farmer>> filterFarmersByLocation({
-    String? village,
-    String? taluka,
-    String? district,
-  }) async {
-    final db = await database;
-    String whereClause = '';
-    List<String> whereArgs = [];
-
-    if (village != null && village.isNotEmpty) {
-      whereClause += 'village = ?';
-      whereArgs.add(village);
-    }
-    if (taluka != null && taluka.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'taluka = ?';
-      whereArgs.add(taluka);
-    }
-    if (district != null && district.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'district = ?';
-      whereArgs.add(district);
-    }
-
-    final List<Map<String, dynamic>> maps = await db.query(
-      'farmers',
-      where: whereClause.isEmpty ? null : whereClause,
-      whereArgs: whereArgs.isEmpty ? null : whereArgs,
-    );
-    return List.generate(maps.length, (i) => Farmer.fromMap(maps[i]));
-  }
-
   static Future<int> updateFarmer(Farmer farmer) async {
     final db = await database;
     return await db.update(
@@ -232,6 +178,12 @@ class DatabaseService {
   static Future<int> deleteFarmer(String id) async {
     final db = await database;
     return await db.delete('farmers', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Delete all farmers
+  static Future<void> deleteAllFarmers() async {
+    final db = await database;
+    await db.delete('farmers');
   }
 
   // Crop operations
