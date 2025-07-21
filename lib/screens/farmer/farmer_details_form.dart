@@ -7,6 +7,7 @@ import '../../constants/app_constants.dart';
 import '../../models/farmer.dart';
 import '../../services/shared_prefs_service.dart';
 import 'dart:math';
+import '../../services/database_service.dart';
 
 class FarmerDetailsForm extends StatefulWidget {
   final Farmer? farmer;
@@ -202,7 +203,7 @@ class _FarmerDetailsFormState extends State<FarmerDetailsForm> {
     );
   }
 
-  void _saveFarmer() {
+  void _saveFarmer() async {
     if (_formKey.currentState!.validate()) {
       final farmer = Farmer(
         id: widget.farmer?.id ?? _generateId(),
@@ -218,11 +219,9 @@ class _FarmerDetailsFormState extends State<FarmerDetailsForm> {
         updatedAt: DateTime.now(),
       );
 
-      if (widget.farmer == null) {
-        context.read<FarmerBloc>().add(AddFarmer(farmer));
-      } else {
-        context.read<FarmerBloc>().add(UpdateFarmer(farmer));
-      }
+      // Since only one farmer is stored, always delete all and insert/update
+      await DatabaseService.deleteAllFarmers();
+      await DatabaseService.insertFarmer(farmer);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

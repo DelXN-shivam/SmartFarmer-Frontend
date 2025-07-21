@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
+import '../../constants/strings.dart';
+import '../../services/shared_prefs_service.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
   const LanguageSelectionScreen({super.key});
@@ -11,11 +13,19 @@ class LanguageSelectionScreen extends StatefulWidget {
 
 class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   String? _selectedLanguage;
+  late String _langCode;
   final List<Map<String, String>> _languages = [
     {'code': 'en', 'name': 'English', 'native': 'English'},
     {'code': 'hi', 'name': 'Hindi', 'native': 'हिन्दी'},
     {'code': 'mr', 'name': 'Marathi', 'native': 'मराठी'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _langCode = SharedPrefsService.getLanguage() ?? 'en';
+    _selectedLanguage = _langCode;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +62,10 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 
                   // App Title
                   Text(
-                    'Smart Farming',
+                    AppStrings.getString(
+                      'app_title',
+                      _selectedLanguage ?? 'en',
+                    ),
                     style: TextStyle(
                       fontSize: titleFontSize,
                       fontWeight: FontWeight.bold,
@@ -63,7 +76,10 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 
                   // Subtitle
                   Text(
-                    'Choose your preferred language',
+                    AppStrings.getString(
+                      'choose_language',
+                      _selectedLanguage ?? 'en',
+                    ),
                     style: TextStyle(
                       fontSize: isSmallScreen ? 14.0 : 16.0,
                       color: Colors.green[700],
@@ -163,7 +179,13 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                       ),
                       onPressed: _selectedLanguage == null
                           ? null
-                          : () {
+                          : () async {
+                              await SharedPrefsService.setLanguage(
+                                _selectedLanguage!,
+                              );
+                              setState(() {
+                                _langCode = _selectedLanguage!;
+                              });
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) =>
@@ -172,7 +194,10 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                               );
                             },
                       child: Text(
-                        'Continue',
+                        AppStrings.getString(
+                          'continue',
+                          _selectedLanguage ?? 'en',
+                        ),
                         style: TextStyle(
                           fontSize: isSmallScreen ? 16.0 : 18.0,
                           fontWeight: FontWeight.bold,

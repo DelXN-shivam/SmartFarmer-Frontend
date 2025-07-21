@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smart_farmer/screens/common/about_screen.dart';
+import 'package:smart_farmer/screens/common/hepl_support_screen.dart';
+import 'package:smart_farmer/screens/common/notifications_screen.dart';
 import '../../blocs/farmer/farmer_bloc.dart';
 import '../../blocs/farmer/farmer_event.dart';
 import '../../blocs/farmer/farmer_state.dart';
@@ -11,8 +14,12 @@ import '../../services/shared_prefs_service.dart';
 import '../search/search_screen.dart';
 import '../filter/location_filter_screen.dart';
 import 'farmer_details_form.dart';
-import 'crop_details_form.dart';
+import 'crop_add_edit__form.dart';
 import '../common/crop_detail_screen.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer' as developer;
+import 'package:http/http.dart' as http;
 
 class FarmerDashboardScreen extends StatefulWidget {
   const FarmerDashboardScreen({super.key});
@@ -32,16 +39,72 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
   late Animation<double> _slideAnimation;
   late Animation<double> _fabScaleAnimation;
 
+  Map<String, dynamic>? _profileData;
+
+  bool _isCropsLoading = false;
+  String? _cropsError;
+
+  // Temporary in-memory cache for fetched crops
+  List<dynamic> _fetchedCrops = [];
+
+  Future<void> _fetchCropsFromApi({bool forceRefresh = false}) async {
+    final farmerId = SharedPrefsService.getUserId();
+    if (_fetchedCrops.isNotEmpty && !forceRefresh) return;
+    setState(() {
+      _isCropsLoading = true;
+      _cropsError = null;
+    });
+    try {
+      final url = Uri.parse(
+        'https://smart-farmer-backend.vercel.app/api/crop/by-farmer/$farmerId',
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final cropsJson = data['crops'] as List<dynamic>?;
+        if (cropsJson != null) {
+          _fetchedCrops = cropsJson;
+        } else {
+          _fetchedCrops = [];
+        }
+      } else {
+        _cropsError = 'Failed to fetch crops: ${response.statusCode}';
+      }
+    } catch (e) {
+      _cropsError = 'Error: $e';
+    } finally {
+      setState(() {
+        _isCropsLoading = false;
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _loadFarmerData();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadProfileData();
+      await _loadFarmerData();
+      await _fetchCropsFromApi();
+      setState(() {}); // Force rebuild after both are loaded
+    });
     _setupAnimations();
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text;
       });
     });
+  }
+
+  Future<void> _loadProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    if (userDataString != null) {
+      setState(() {
+        _profileData = json.decode(userDataString) as Map<String, dynamic>;
+        developer.log("$_profileData");
+      });
+    }
   }
 
   void _setupAnimations() {
@@ -71,11 +134,25 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     _fabAnimationController.forward();
   }
 
-  void _loadFarmerData() {
-    // Always load farmer_001
-    context.read<FarmerBloc>().add(LoadFarmerById('farmer_001'));
-    // Optionally, load crops for this farmer
-    context.read<CropBloc>().add(LoadCropsByFarmer('farmer_001'));
+  Future<void> _loadFarmerData() async {
+    final userId = SharedPrefsService.getUserId();
+    developer.log(
+      'Fetched userId from SharedPrefsService: $userId',
+      name: 'FarmerDashboardScreen',
+    );
+    if (userId != null && userId.isNotEmpty) {
+      developer.log(
+        'Dispatching LoadFarmerById with userId: $userId',
+        name: 'FarmerDashboardScreen',
+      );
+      context.read<FarmerBloc>().add(LoadFarmerById(userId));
+      context.read<CropBloc>().add(LoadCropsByFarmer(userId));
+    } else {
+      developer.log(
+        'No valid userId found. Farmer data will not be loaded.',
+        name: 'FarmerDashboardScreen',
+      );
+    }
   }
 
   @override
@@ -86,65 +163,18 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final langCode = SharedPrefsService.getLanguage() ?? 'en';
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FFFE),
-      extendBodyBehindAppBar: true,
-      appBar: _buildModernAppBar(),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFE8F5E8), Color(0xFFF8FFFE)],
-          ),
-        ),
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: [_buildHomeTab(), _buildCropsTab(), _buildProfileTab()],
-        ),
-      ),
-      bottomNavigationBar: _buildModernBottomNav(langCode),
-      floatingActionButton: _selectedIndex == 1
-          ? ScaleTransition(
-              scale: _fabScaleAnimation,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.withOpacity(0.4),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: FloatingActionButton.extended(
-                  onPressed: () => _navigateToCropForm(),
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text(
-                    'Add Crop',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : null,
-    );
-  }
-
-  PreferredSizeWidget _buildModernAppBar() {
+  PreferredSizeWidget _buildModernAppBar({
+    String name = '',
+    String initials = '',
+  }) {
+    final displayName =
+        _profileData != null && (_profileData!['name']?.isNotEmpty ?? false)
+        ? _profileData!['name']
+        : name;
+    final displayInitials =
+        _profileData != null && (_profileData!['name']?.isNotEmpty ?? false)
+        ? _profileData!['name'].substring(0, 2).toUpperCase()
+        : initials;
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -166,27 +196,6 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         ),
         child: const Icon(Icons.eco, color: Colors.white, size: 24),
       ),
-      // title: Row(
-      //   children: [
-      //     Container(
-      //       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      //       decoration: BoxDecoration(
-      //         color: Colors.white.withOpacity(0.2),
-      //         borderRadius: BorderRadius.circular(20),
-      //         border: Border.all(color: Colors.white.withOpacity(0.3)),
-      //       ),
-      //       child: const Text(
-      //         'SmartFarm Pro',
-      //         style: TextStyle(
-      //           color: Colors.white,
-      //           fontSize: 18,
-      //           fontWeight: FontWeight.w700,
-      //           letterSpacing: 0.5,
-      //         ),
-      //       ),
-      //     ),
-      //   ],
-      // ),
       actions: [
         Container(
           margin: const EdgeInsets.only(right: 8),
@@ -202,9 +211,9 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                   fontWeight: FontWeight.w400,
                 ),
               ),
-              const Text(
-                'Rajesh Kumar',
-                style: TextStyle(
+              Text(
+                displayName,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -222,12 +231,12 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
               colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
             ),
           ),
-          child: const CircleAvatar(
+          child: CircleAvatar(
             backgroundColor: Colors.transparent,
             radius: 20,
             child: Text(
-              'RK',
-              style: TextStyle(
+              displayInitials,
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -268,7 +277,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             _animationController.forward();
           },
           selectedItemColor: const Color(0xFF2E7D32),
-          unselectedItemColor: Colors.grey[400],
+          unselectedItemColor: Colors.grey[900],
           backgroundColor: Colors.white,
           elevation: 0,
           type: BottomNavigationBarType.fixed,
@@ -313,12 +322,13 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
       child: Icon(
         icon,
         size: 24,
-        color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[400],
+        color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[900],
       ),
     );
   }
 
   Widget _buildHomeTab() {
+    print('_profileData in _buildHomeTab: $_profileData');
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
 
     return SafeArea(
@@ -327,44 +337,30 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         child: Transform.translate(
           offset: Offset(0, _slideAnimation.value),
           child: SingleChildScrollView(
-            // padding: const EdgeInsets.only(
-            //   top: 20,
-            //   left: 20,
-            //   right: 20,
-            //   bottom: 20,
-            // ),
+            padding: const EdgeInsets.only(
+              top: 10,
+              left: 20,
+              right: 20,
+              bottom: 20,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // const SizedBox(height: 10),
-                // Enhanced Search Bar
-                _buildEnhancedSearchBar(langCode, "search_farmer"),
-                const SizedBox(height: 24),
-
-                // Welcome Section with Glass Effect
-                _buildGlassWelcomeCard(),
+                if (_profileData != null) _buildGlassWelcomeCardFromProfile(),
                 const SizedBox(height: 32),
-
-                // Quick Actions with Modern Cards
                 _buildSectionHeader('Quick Actions', Icons.flash_on_rounded),
                 const SizedBox(height: 16),
                 _buildModernQuickActions(),
                 const SizedBox(height: 32),
-
-                // Weather Card
                 _buildWeatherCard(),
                 const SizedBox(height: 32),
-
-                // AI Insights with Gradient
                 _buildSectionHeader('AI Insights', Icons.psychology_rounded),
                 const SizedBox(height: 16),
-                _buildEnhancedAIInsights(),
+                _buildAIInsights(),
                 const SizedBox(height: 32),
-
-                // Recent Crops with Modern Design
                 _buildSectionHeader('Recent Crops', Icons.grass_rounded),
                 const SizedBox(height: 16),
-                _buildEnhancedRecentCrops(),
+                _buildRecentCrops(),
                 const SizedBox(height: 100),
               ],
             ),
@@ -374,363 +370,28 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedSearchBar(String langCode, String type) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(colors: [Colors.white, Colors.grey[50]!]),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: AppStrings.getString(type, langCode),
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                prefixIcon: Container(
-                  margin: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.search_rounded,
-                    color: Color(0xFF4CAF50),
-                    size: 20,
-                  ),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.transparent,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-              ),
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-              ),
-            ),
-            child: IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const LocationFilterScreen(),
-                ),
-              ),
-              icon: const Icon(Icons.tune_rounded, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildGlassWelcomeCardFromProfile() {
+    final displayName = _profileData!['name'] ?? '';
+    final displayVillage = _profileData!['village'] ?? '';
+    final displayDistrict = _profileData!['district'] ?? '';
 
-  Widget _buildGlassWelcomeCard() {
-    return BlocBuilder<FarmerBloc, FarmerState>(
-      builder: (context, state) {
-        if (state is SingleFarmerLoaded) {
-          final farmer = state.farmer;
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withOpacity(0.9),
-                  Colors.white.withOpacity(0.7),
-                ],
-              ),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 30,
-                  offset: const Offset(0, 15),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.waving_hand_rounded,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Good Morning!',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          farmer.name,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1B5E20),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.location_on_rounded,
-                                size: 16,
-                                color: Color(0xFF4CAF50),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${farmer.village}, ${farmer.district}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF2E7D32),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        return _buildLoadingCard('Loading farmer data...');
-      },
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: const Color(0xFF2E7D32), size: 20),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1B5E20),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModernQuickActions() {
-    final langCode = SharedPrefsService.getLanguage() ?? 'en';
-
-    final actions = [
-      {
-        'icon': Icons.add_circle_outline_rounded,
-        'title': AppStrings.getString('add_crop', langCode),
-        'color': const Color(0xFF4CAF50),
-        'gradient': [const Color(0xFF4CAF50), const Color(0xFF2E7D32)],
-        'onTap': () => _navigateToCropForm(),
-      },
-      {
-        'icon': Icons.search_rounded,
-        'title': AppStrings.getString('search_crops', langCode),
-        'color': const Color(0xFF2196F3),
-        'gradient': [const Color(0xFF2196F3), const Color(0xFF1976D2)],
-        'onTap': () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const SearchScreen()),
-        ),
-      },
-      {
-        'icon': Icons.location_on_rounded,
-        'title': AppStrings.getString('filter_by_location', langCode),
-        'color': const Color(0xFFFF9800),
-        'gradient': [const Color(0xFFFF9800), const Color(0xFFF57C00)],
-        'onTap': () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const LocationFilterScreen()),
-        ),
-      },
-      {
-        'icon': Icons.analytics_rounded,
-        'title': AppStrings.getString('view_reports', langCode),
-        'color': const Color(0xFF9C27B0),
-        'gradient': [const Color(0xFF9C27B0), const Color(0xFF7B1FA2)],
-        'onTap': () {},
-      },
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Calculate responsive dimensions
-        final isSmallScreen = constraints.maxWidth < 400;
-        final crossAxisCount = isSmallScreen ? 2 : 4;
-        final childAspectRatio = isSmallScreen ? 1.0 : 0.9;
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: childAspectRatio,
-          ),
-          itemCount: actions.length,
-          itemBuilder: (context, index) {
-            final action = actions[index];
-            return _buildModernActionCard(
-              action['icon'] as IconData,
-              action['title'] as String,
-              action['gradient'] as List<Color>,
-              action['onTap'] as VoidCallback,
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildModernActionCard(
-    IconData icon,
-    String title,
-    List<Color> gradient,
-    VoidCallback onTap,
-  ) {
-    return Container(
-      constraints: const BoxConstraints(
-        minHeight: 100, // Ensure minimum height
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Colors.grey[50]!],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: LinearGradient(colors: gradient),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 20),
-                ),
-                const SizedBox(height: 8),
-                Flexible(
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1B5E20),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWeatherCard() {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+          colors: [
+            Colors.white.withOpacity(0.9),
+            Colors.white.withOpacity(0.7),
+          ],
         ),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2196F3).withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
@@ -738,327 +399,75 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         padding: const EdgeInsets.all(24),
         child: Row(
           children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                ),
+              ),
+              child: const Icon(
+                Icons.waving_hand_rounded,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Today\'s Weather',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '28°C',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                   Text(
-                    'Perfect for farming',
+                    'Good Morning!',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
                       fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.wb_sunny_rounded,
-                color: Colors.white,
-                size: 40,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEnhancedAIInsights() {
-    final langCode = SharedPrefsService.getLanguage() ?? 'en';
-
-    return BlocBuilder<CropBloc, CropState>(
-      builder: (context, state) {
-        if (state is CropLoaded && state.crops.isNotEmpty) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmallScreen = constraints.maxWidth < 350;
-
-              return Container(
-                width: double.infinity,
-                constraints: const BoxConstraints(minHeight: 120),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF9C27B0).withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.psychology_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'AI Recommendation',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  'Powered by Machine Learning',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Based on weather patterns and soil conditions, consider planting drought-resistant crops this season. Expected yield increase: 15%',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isSmallScreen ? 12 : 14,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        }
-        return _buildLoadingCard(
-          AppStrings.getString('no_crops_for_insights', langCode),
-        );
-      },
-    );
-  }
-
-  Widget _buildEnhancedRecentCrops() {
-    final langCode = SharedPrefsService.getLanguage() ?? 'en';
-
-    return BlocBuilder<CropBloc, CropState>(
-      builder: (context, state) {
-        if (state is CropLoaded && state.crops.isNotEmpty) {
-          final filteredCrops = state.crops.where((crop) {
-            return crop.cropName.toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            );
-          }).toList();
-
-          if (filteredCrops.isEmpty) {
-            return _buildEmptyState(
-              AppStrings.getString('no_crops_found', langCode),
-            );
-          }
-
-          return SizedBox(
-            height: 200,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(left: 4),
-              itemCount: filteredCrops.take(5).length,
-              itemBuilder: (context, index) {
-                final crop = filteredCrops[index];
-                return Container(
-                  width: 300,
-                  margin: const EdgeInsets.only(right: 16),
-                  child: _buildModernCropCard(crop),
-                );
-              },
-            ),
-          );
-        }
-        return _buildEmptyState(
-          AppStrings.getString('no_crops_found', langCode),
-        );
-      },
-    );
-  }
-
-  Widget _buildModernCropCard(dynamic crop) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Colors.grey[50]!],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.eco_rounded,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        crop.cropName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1B5E20),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Area: ${crop.area} acres',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today_rounded,
-                    size: 16,
-                    color: Colors.grey[600],
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Planted: ${crop.sowingDate != null ? crop.sowingDate.toString().split(' ')[0] : "N/A"}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
+                      color: Colors.grey[600],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
+                  const SizedBox(height: 4),
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B5E20),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 8,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2196F3).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'Healthy',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF1976D2),
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.location_on_rounded,
+                          size: 16,
+                          color: Color(0xFF4CAF50),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$displayVillage, $displayDistrict',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 12,
-                    color: Color(0xFF4CAF50),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -1074,7 +483,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         opacity: _fadeAnimation,
         child: Column(
           children: [
-            // Enhanced Header with Search
+            //  Header with Search
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1093,7 +502,6 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
               ),
               child: Column(
                 children: [
-                  const SizedBox(height: 10),
                   Row(
                     children: [
                       const Icon(
@@ -1116,38 +524,40 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                           Icons.refresh,
                           color: Color(0xFF2E7D32),
                         ),
-                        onPressed: () {
-                          setState(() {}); // Triggers UI to reload from crops
+                        onPressed: () async {
+                          _fetchedCrops.clear();
+                          await _fetchCropsFromApi(forceRefresh: true);
+                          setState(() {});
                         },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  _buildEnhancedSearchBar(langCode, "search_crops"),
                 ],
               ),
             ),
-
             // Crops List
             Expanded(
-              child: BlocBuilder<CropBloc, CropState>(
-                builder: (context, state) {
-                  if (state is CropLoaded && state.crops.isNotEmpty) {
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: state.crops.length,
-                      itemBuilder: (context, index) {
-                        final crop = state.crops[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          child: _buildEnhancedCropListCard(crop),
-                        );
-                      },
-                    );
-                  }
-                  return _buildEmptyCropsState(langCode);
-                },
-              ),
+              child: _isCropsLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : _cropsError != null
+                  ? Center(child: Text(_cropsError!))
+                  : (_fetchedCrops.isNotEmpty
+                        ? ListView.builder(
+                            padding: const EdgeInsets.only(
+                              bottom: 60,
+                              left: 20,
+                              right: 20,
+                            ),
+                            itemCount: _fetchedCrops.length,
+                            itemBuilder: (context, index) {
+                              final crop = _fetchedCrops[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                child: _buildCropListCard(crop),
+                              );
+                            },
+                          )
+                        : _buildEmptyCropsState(langCode)),
             ),
           ],
         ),
@@ -1155,9 +565,10 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedCropListCard(dynamic crop) {
+  Widget _buildCropListCard(dynamic crop) {
     return InkWell(
       onTap: () {
+        developer.log("$crop");
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => CropDetailScreen(crop: crop)),
@@ -1188,17 +599,40 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.eco_rounded,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child:
+                    crop['images'] != null &&
+                        crop['images'] is List &&
+                        crop['images'].isNotEmpty &&
+                        crop['images'][0] != null &&
+                        crop['images'][0].toString().isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          crop['images'][0],
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                                Icons.broken_image,
+                                color: Colors.grey,
+                                size: 24,
+                              ),
+                        ),
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.eco_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1209,7 +643,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                       children: [
                         Expanded(
                           child: Text(
-                            crop.cropName,
+                            crop['name'] ?? '',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -1221,7 +655,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Area: ${crop.area} acres',
+                            'Area: ${crop['area']?['value'] ?? ''} ${crop['area']?['unit'] ?? ''}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -1242,7 +676,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            'Planted: ${crop.sowingDate != null ? crop.sowingDate.toString().split(' ')[0] : "N/A"}',
+                            'Planted: ${crop['sowingDate'] ?? "N/A"}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[700],
@@ -1315,8 +749,8 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             children: [
               const SizedBox(height: 10),
 
-              // Enhanced Profile Header
-              _buildEnhancedProfileHeader(),
+              //  Profile Header
+              _buildProfileHeader(),
               const SizedBox(height: 32),
 
               // Stats Cards
@@ -1326,12 +760,12 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
               // Settings Section
               _buildSectionHeader('Settings', Icons.settings_rounded),
               const SizedBox(height: 16),
-              _buildEnhancedSettingsList(),
+              _buildSettingsList(),
               const SizedBox(height: 32),
 
               // Logout Button
               _buildLogoutButton(),
-              const SizedBox(height: 100),
+              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -1339,125 +773,131 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedProfileHeader() {
+  Widget _buildProfileHeader() {
     return BlocBuilder<FarmerBloc, FarmerState>(
       builder: (context, state) {
-        if (state is SingleFarmerLoaded) {
-          final farmer = state.farmer;
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+        String displayName = '';
+        String displayAadhaar = '';
+        if (_profileData != null) {
+          displayName = _profileData!['name'] ?? '';
+          displayAadhaar = _profileData!['aadhaarNumber'] ?? '';
+        } else if (state is SingleFarmerLoaded) {
+          displayName = state.farmer.name;
+          displayAadhaar = state.farmer.aadhaarNumber;
+        }
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF4CAF50).withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF4CAF50).withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    color: Colors.white.withOpacity(0.2),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 3,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      displayName.isNotEmpty
+                          ? displayName.substring(0, 2).toUpperCase()
+                          : '',
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    displayAadhaar,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _navigateToProfileForm(),
+                      borderRadius: BorderRadius.circular(16),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.edit_rounded,
+                              color: Color(0xFF2E7D32),
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Edit Profile',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFF2E7D32),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      color: Colors.white.withOpacity(0.2),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 3,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        farmer.name.substring(0, 2).toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    farmer.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      farmer.aadhaarNumber,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => _navigateToProfileForm(),
-                        borderRadius: BorderRadius.circular(16),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.edit_rounded,
-                                color: Color(0xFF2E7D32),
-                                size: 20,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Edit Profile',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF2E7D32),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        } else {
-          return _buildLoadingCard('Loading profile...');
-        }
+          ),
+        );
       },
     );
   }
@@ -1539,8 +979,21 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
-  Widget _buildEnhancedSettingsList() {
+  Widget _buildSettingsList() {
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
+
+    String _getLanguageDisplayName(String code) {
+      switch (code) {
+        case 'en':
+          return 'English';
+        case 'hi':
+          return 'हिन्दी';
+        case 'mr':
+          return 'मराठी';
+        default:
+          return code;
+      }
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -1559,7 +1012,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
           _buildSettingTile(
             Icons.language_rounded,
             AppStrings.getString('language', langCode),
-            langCode == 'en' ? 'English' : 'हिंदी',
+            _getLanguageDisplayName(langCode),
             onTap: _showLanguageDialog,
           ),
           _buildDivider(),
@@ -1569,7 +1022,11 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             null,
             trailing: Switch(
               value: true,
-              onChanged: (value) {},
+              onChanged: (value) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => NotificationScreen()),
+                );
+              },
               activeColor: const Color(0xFF4CAF50),
             ),
           ),
@@ -1578,14 +1035,26 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             Icons.help_rounded,
             AppStrings.getString('help_support', langCode),
             null,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HelpSupportScreen(),
+                ),
+              );
+            },
           ),
           _buildDivider(),
           _buildSettingTile(
             Icons.info_rounded,
             AppStrings.getString('about', langCode),
             null,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AboutScreen()),
+              );
+            },
           ),
         ],
       ),
@@ -1846,6 +1315,630 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
+  Widget _buildGlassWelcomeCard(farmer) {
+    final displayName =
+        _profileData != null && (_profileData!['name']?.isNotEmpty ?? false)
+        ? _profileData!['name']
+        : farmer.name;
+    final displayVillage =
+        _profileData != null && (_profileData!['village']?.isNotEmpty ?? false)
+        ? _profileData!['village']
+        : farmer.village;
+    final displayDistrict =
+        _profileData != null && (_profileData!['district']?.isNotEmpty ?? false)
+        ? _profileData!['district']
+        : farmer.district;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.9),
+            Colors.white.withOpacity(0.7),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                ),
+              ),
+              child: const Icon(
+                Icons.waving_hand_rounded,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Good Morning!',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B5E20),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.location_on_rounded,
+                          size: 16,
+                          color: Color(0xFF4CAF50),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '	$displayVillage, $displayDistrict',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4CAF50).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: const Color(0xFF2E7D32), size: 20),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1B5E20),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModernQuickActions() {
+    final langCode = SharedPrefsService.getLanguage() ?? 'en';
+
+    final actions = [
+      {
+        'icon': Icons.add_circle_outline_rounded,
+        'title': AppStrings.getString('add_crop', langCode),
+        'color': const Color(0xFF4CAF50),
+        'gradient': [const Color(0xFF4CAF50), const Color(0xFF2E7D32)],
+        'onTap': () => _navigateToCropForm(),
+      },
+      {
+        'icon': Icons.search_rounded,
+        'title': AppStrings.getString('search_crops', langCode),
+        'color': const Color(0xFF2196F3),
+        'gradient': [const Color(0xFF2196F3), const Color(0xFF1976D2)],
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SearchScreen()),
+        ),
+      },
+      {
+        'icon': Icons.location_on_rounded,
+        'title': AppStrings.getString('filter_by_location', langCode),
+        'color': const Color(0xFFFF9800),
+        'gradient': [const Color(0xFFFF9800), const Color(0xFFF57C00)],
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LocationFilterScreen()),
+        ),
+      },
+      {
+        'icon': Icons.analytics_rounded,
+        'title': AppStrings.getString('view_reports', langCode),
+        'color': const Color(0xFF9C27B0),
+        'gradient': [const Color(0xFF9C27B0), const Color(0xFF7B1FA2)],
+        'onTap': () {},
+      },
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate responsive dimensions
+        final isSmallScreen = constraints.maxWidth < 400;
+        final crossAxisCount = isSmallScreen ? 2 : 4;
+        final childAspectRatio = isSmallScreen ? 1.0 : 0.9;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemCount: actions.length,
+          itemBuilder: (context, index) {
+            final action = actions[index];
+            return _buildModernActionCard(
+              action['icon'] as IconData,
+              action['title'] as String,
+              action['gradient'] as List<Color>,
+              action['onTap'] as VoidCallback,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildModernActionCard(
+    IconData icon,
+    String title,
+    List<Color> gradient,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      constraints: const BoxConstraints(
+        minHeight: 100, // Ensure minimum height
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Colors.grey[50]!],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(colors: gradient),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
+                const SizedBox(height: 8),
+                Flexible(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1B5E20),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeatherCard() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2196F3).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Today\'s Weather',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '28°C',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Perfect for farming',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.wb_sunny_rounded,
+                color: Colors.white,
+                size: 40,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAIInsights() {
+    final langCode = SharedPrefsService.getLanguage() ?? 'en';
+
+    return BlocBuilder<CropBloc, CropState>(
+      builder: (context, state) {
+        if (state is CropLoaded && state.crops.isNotEmpty) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmallScreen = constraints.maxWidth < 350;
+
+              return Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(minHeight: 120),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF9C27B0).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.psychology_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'AI Recommendation',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Powered by Machine Learning',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Based on weather patterns and soil conditions, consider planting drought-resistant crops this season. Expected yield increase: 15%',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isSmallScreen ? 12 : 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        }
+        return _buildLoadingCard(
+          AppStrings.getString('no_crops_for_insights', langCode),
+        );
+      },
+    );
+  }
+
+  Widget _buildRecentCrops() {
+    final langCode = SharedPrefsService.getLanguage() ?? 'en';
+
+    return BlocBuilder<CropBloc, CropState>(
+      builder: (context, state) {
+        if (state is CropLoaded && state.crops.isNotEmpty) {
+          final filteredCrops = state.crops.where((crop) {
+            return crop.cropName.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            );
+          }).toList();
+
+          if (filteredCrops.isEmpty) {
+            return _buildEmptyState(
+              AppStrings.getString('no_crops_found', langCode),
+            );
+          }
+
+          return SizedBox(
+            height: 200,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(left: 4),
+              itemCount: filteredCrops.take(5).length,
+              itemBuilder: (context, index) {
+                final crop = filteredCrops[index];
+                return Container(
+                  width: 300,
+                  margin: const EdgeInsets.only(right: 16),
+                  child: _buildModernCropCard(crop),
+                );
+              },
+            ),
+          );
+        }
+        return _buildEmptyState(
+          AppStrings.getString('no_crops_found', langCode),
+        );
+      },
+    );
+  }
+
+  Widget _buildModernCropCard(dynamic crop) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Colors.grey[50]!],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.eco_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        crop.cropName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1B5E20),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Area: ${crop.area} acres',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4CAF50).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 16,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Planted: ${crop.sowingDate != null ? crop.sowingDate.toString().split(' ')[0] : "N/A"}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2196F3).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Healthy',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF1976D2),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 12,
+                    color: Color(0xFF4CAF50),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Navigation Methods
   void _navigateToCropForm() {
     final userId = SharedPrefsService.getUserId();
@@ -1897,6 +1990,8 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             _buildLanguageOption('English', 'en', langCode),
             const SizedBox(height: 8),
             _buildLanguageOption('हिंदी', 'hi', langCode),
+            const SizedBox(height: 8),
+            _buildLanguageOption('मराठी', 'mr', langCode),
           ],
         ),
       ),
@@ -1971,6 +2066,73 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final langCode = SharedPrefsService.getLanguage() ?? 'en';
+    return BlocBuilder<FarmerBloc, FarmerState>(
+      builder: (context, state) {
+        String name = '';
+        String initials = '';
+        if (state is SingleFarmerLoaded) {
+          name = state.farmer.name;
+          initials = name.isNotEmpty ? name.substring(0, 2).toUpperCase() : '';
+        }
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8FFFE),
+          extendBodyBehindAppBar: true,
+          appBar: _buildModernAppBar(name: name, initials: initials),
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFE8F5E8), Color(0xFFF8FFFE)],
+              ),
+            ),
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: [_buildHomeTab(), _buildCropsTab(), _buildProfileTab()],
+            ),
+          ),
+          bottomNavigationBar: _buildModernBottomNav(langCode),
+          floatingActionButton: _selectedIndex == 1
+              ? ScaleTransition(
+                  scale: _fabScaleAnimation,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.4),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: FloatingActionButton.extended(
+                      onPressed: () => _navigateToCropForm(),
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text(
+                        'Add Crop',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : null,
+        );
+      },
     );
   }
 }

@@ -12,12 +12,6 @@ class AIService {
     // Crop age based insights
     insights.addAll(_getAgeBasedInsights(crop));
 
-    // Soil type based insights
-    insights.addAll(_getSoilBasedInsights(crop));
-
-    // Crop type specific insights
-    insights.addAll(_getCropTypeInsights(crop));
-
     // Weather and seasonal insights
     insights.addAll(_getSeasonalInsights(crop));
 
@@ -58,92 +52,6 @@ class AIService {
     return insights;
   }
 
-  /// Get insights based on soil type
-  static List<String> _getSoilBasedInsights(Crop crop) {
-    final insights = <String>[];
-
-    switch (crop.soilType.toLowerCase()) {
-      case 'clay':
-        insights.add(
-          'Clay soil retains moisture well. Reduce irrigation frequency.',
-        );
-        insights.add('Consider soil aeration to improve root development.');
-        break;
-      case 'sandy':
-        insights.add(
-          'Sandy soil requires frequent irrigation and nutrient application.',
-        );
-        insights.add('Apply organic matter to improve water retention.');
-        break;
-      case 'loamy':
-        insights.add(
-          'Loamy soil is ideal for most crops. Maintain balanced nutrients.',
-        );
-        insights.add(
-          'Regular soil testing recommended for optimal management.',
-        );
-        break;
-      case 'silt':
-        insights.add('Silt soil has good water retention. Monitor drainage.');
-        insights.add('Apply balanced fertilizers for optimal growth.');
-        break;
-      default:
-        insights.add(
-          'Consider soil testing for specific nutrient recommendations.',
-        );
-    }
-
-    return insights;
-  }
-
-  /// Get crop type specific insights
-  static List<String> _getCropTypeInsights(Crop crop) {
-    final insights = <String>[];
-
-    switch (crop.cropType.toLowerCase()) {
-      case 'wheat':
-        insights.add(
-          'Wheat requires cool temperatures. Monitor for rust diseases.',
-        );
-        insights.add('Apply phosphorus during early growth stages.');
-        break;
-      case 'rice':
-        insights.add(
-          'Rice needs consistent water levels. Check for water management.',
-        );
-        insights.add('Monitor for blast disease and stem borer infestation.');
-        break;
-      case 'maize':
-        insights.add(
-          'Maize benefits from nitrogen-rich fertilizers during growth.',
-        );
-        insights.add('Monitor for fall armyworm and corn borer.');
-        break;
-      case 'cotton':
-        insights.add('Cotton requires warm temperatures and adequate spacing.');
-        insights.add('Monitor for bollworm and whitefly infestation.');
-        break;
-      case 'sugarcane':
-        insights.add(
-          'Sugarcane needs regular irrigation and ratoon management.',
-        );
-        insights.add('Monitor for red rot and smut diseases.');
-        break;
-      case 'pulses':
-        insights.add(
-          'Pulses fix nitrogen. Reduce nitrogen fertilizer application.',
-        );
-        insights.add('Monitor for pod borer and wilt diseases.');
-        break;
-      default:
-        insights.add(
-          'Follow general crop management practices for optimal yield.',
-        );
-    }
-
-    return insights;
-  }
-
   /// Get seasonal and weather based insights
   static List<String> _getSeasonalInsights(Crop crop) {
     final insights = <String>[];
@@ -177,7 +85,7 @@ class AIService {
   static double predictYield(Crop crop) {
     final baseYield = crop.expectedYield;
     final age = crop.cropAgeInDays;
-    final lifespan = AppConstants.cropLifespan[crop.cropType] ?? 120;
+    final lifespan = 120; // Default value, since cropType is removed
 
     // Simple prediction model
     double multiplier = 1.0;
@@ -191,19 +99,6 @@ class AIService {
       multiplier *= 1.2; // Late stage
     }
 
-    // Soil type factor
-    switch (crop.soilType.toLowerCase()) {
-      case 'loamy':
-        multiplier *= 1.1;
-        break;
-      case 'clay':
-        multiplier *= 1.0;
-        break;
-      case 'sandy':
-        multiplier *= 0.9;
-        break;
-    }
-
     // Random variation (±10%)
     final variation = 0.9 + (_random.nextDouble() * 0.2);
     multiplier *= variation;
@@ -215,7 +110,7 @@ class AIService {
   static Map<String, String> getGrowthRecommendations(Crop crop) {
     final recommendations = <String, String>{};
     final age = crop.cropAgeInDays;
-    final lifespan = AppConstants.cropLifespan[crop.cropType] ?? 120;
+    final lifespan = 120; // Default value, since cropType is removed
 
     if (age < lifespan * 0.1) {
       recommendations['stage'] = 'Germination';

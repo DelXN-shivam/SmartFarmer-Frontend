@@ -5,67 +5,7 @@ import '../../services/database_service.dart';
 
 class FarmerBloc extends Bloc<FarmerEvent, FarmerState> {
   FarmerBloc() : super(FarmerInitial()) {
-    on<LoadFarmers>((event, emit) async {
-      emit(FarmerLoading());
-      try {
-        final farmers = await DatabaseService.getAllFarmers();
-        emit(FarmerLoaded(farmers));
-      } catch (e) {
-        emit(FarmerError(e.toString()));
-      }
-    });
-
-    on<AddFarmer>((event, emit) async {
-      try {
-        await DatabaseService.insertFarmer(event.farmer);
-        add(LoadFarmers());
-      } catch (e) {
-        emit(FarmerError(e.toString()));
-      }
-    });
-
-    on<UpdateFarmer>((event, emit) async {
-      try {
-        await DatabaseService.updateFarmer(event.farmer);
-        add(LoadFarmers());
-      } catch (e) {
-        emit(FarmerError(e.toString()));
-      }
-    });
-
-    on<DeleteFarmer>((event, emit) async {
-      try {
-        await DatabaseService.deleteFarmer(event.farmerId);
-        add(LoadFarmers());
-      } catch (e) {
-        emit(FarmerError(e.toString()));
-      }
-    });
-
-    on<SearchFarmers>((event, emit) async {
-      emit(FarmerLoading());
-      try {
-        final farmers = await DatabaseService.searchFarmers(event.query);
-        emit(FarmerLoaded(farmers));
-      } catch (e) {
-        emit(FarmerError(e.toString()));
-      }
-    });
-
-    on<FilterFarmersByLocation>((event, emit) async {
-      emit(FarmerLoading());
-      try {
-        final farmers = await DatabaseService.filterFarmersByLocation(
-          village: event.village,
-          taluka: event.taluka,
-          district: event.district,
-        );
-        emit(FarmerLoaded(farmers));
-      } catch (e) {
-        emit(FarmerError(e.toString()));
-      }
-    });
-
+    // Only keep LoadFarmerById event logic
     on<LoadFarmerById>((event, emit) async {
       emit(FarmerLoading());
       try {

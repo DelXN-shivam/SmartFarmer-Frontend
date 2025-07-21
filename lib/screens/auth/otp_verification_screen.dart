@@ -1,15 +1,20 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
+// import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
 import 'package:smart_farmer/screens/common/language_selection.dart';
-import 'package:smart_farmer/screens/farmer/farmer_dashboard_screen.dart';
+// import 'package:smart_farmer/screens/farmer/farmer_dashboard_screen.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/strings.dart';
 import '../../constants/app_theme.dart';
 import '../../services/shared_prefs_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
+import '../../models/farmer.dart';
+import '../../screens/farmer/farmer_dashboard_screen.dart';
+import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
 
 class MobileOTPScreen extends StatefulWidget {
   const MobileOTPScreen({super.key});
@@ -80,8 +85,8 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.height < 700;
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
+    // final isPortrait =
+    //     MediaQuery.of(context).orientation == Orientation.portrait;
 
     return Scaffold(
       body: Container(
@@ -101,19 +106,12 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.agriculture,
-                              size: isSmallScreen ? 50 : 60,
-                              color: Colors.white,
-                            ),
+                          Image.asset(
+                            "assets/images/smart-farmingLogo.png",
+                            width: 120,
+                            height: 120,
                           ),
-                          SizedBox(height: isSmallScreen ? 16 : 24),
+                          SizedBox(height: isSmallScreen ? 14 : 16),
                           Text(
                             AppStrings.getString('app_title', langCode),
                             style: AppTheme.textTheme.displaySmall?.copyWith(
@@ -124,7 +122,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Smart Farming Management',
+                            AppStrings.getString(
+                              'smart_farming_management',
+                              langCode,
+                            ),
                             style: AppTheme.textTheme.bodyLarge?.copyWith(
                               color: Colors.white.withOpacity(0.9),
                               fontSize: isSmallScreen ? 14 : 16,
@@ -169,7 +170,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                                       },
                                     ),
                                     Text(
-                                      'Back to Mobile Number',
+                                      AppStrings.getString(
+                                        'back_to_mobile_number',
+                                        langCode,
+                                      ),
                                       style: AppTheme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: AppTheme.primaryColor,
@@ -181,8 +185,11 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                               ),
                             Text(
                               _showOTPField
-                                  ? 'Enter OTP'
-                                  : 'Mobile Verification',
+                                  ? AppStrings.getString('enter_otp', langCode)
+                                  : AppStrings.getString(
+                                      'mobile_verification',
+                                      langCode,
+                                    ),
                               style: AppTheme.textTheme.headlineLarge?.copyWith(
                                 fontSize: isSmallScreen ? 20 : 22,
                               ),
@@ -191,8 +198,17 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                             const SizedBox(height: 8),
                             Text(
                               _showOTPField
-                                  ? 'Enter the 6-digit OTP sent to ${_mobileController.text}'
-                                  : 'Enter your mobile number to receive OTP',
+                                  ? AppStrings.getString(
+                                      'enter_otp_message',
+                                      langCode,
+                                    ).replaceFirst(
+                                      '{number}',
+                                      _mobileController.text,
+                                    )
+                                  : AppStrings.getString(
+                                      'enter_mobile_number',
+                                      langCode,
+                                    ),
                               style: AppTheme.textTheme.bodyMedium?.copyWith(
                                 color: AppTheme.textSecondaryColor,
                               ),
@@ -254,18 +270,30 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
         LengthLimitingTextInputFormatter(10), // Only 10 digits
       ],
       decoration: InputDecoration(
-        labelText: 'Mobile Number',
-        hintText: 'Enter your 10-digit mobile number',
+        labelText: AppStrings.getString(
+          'mobile_number',
+          SharedPrefsService.getLanguage() ?? 'en',
+        ),
+        hintText: AppStrings.getString(
+          'enter_mobile_number_hint',
+          SharedPrefsService.getLanguage() ?? 'en',
+        ),
         prefixText: '+91 ',
         prefixIcon: const Icon(Icons.phone, color: AppTheme.primaryColor),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Please enter your mobile number';
+          return AppStrings.getString(
+            'please_enter_mobile_number',
+            SharedPrefsService.getLanguage() ?? 'en',
+          );
         }
         if (value.length != 10) {
-          return 'Mobile number must be 10 digits';
+          return AppStrings.getString(
+            'mobile_number_must_be_10_digits',
+            SharedPrefsService.getLanguage() ?? 'en',
+          );
         }
         return null;
       },
@@ -281,8 +309,14 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
         LengthLimitingTextInputFormatter(6),
       ],
       decoration: InputDecoration(
-        labelText: 'OTP',
-        hintText: 'Enter 6-digit OTP',
+        labelText: AppStrings.getString(
+          'otp',
+          SharedPrefsService.getLanguage() ?? 'en',
+        ),
+        hintText: AppStrings.getString(
+          'enter_otp_hint',
+          SharedPrefsService.getLanguage() ?? 'en',
+        ),
         prefixIcon: const Icon(
           Icons.lock_outline,
           color: AppTheme.primaryColor,
@@ -291,7 +325,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
       ),
       validator: (value) {
         if (value == null || value.isEmpty || value.length != 6) {
-          return 'Please enter a valid 6-digit OTP';
+          return AppStrings.getString(
+            'please_enter_valid_otp',
+            SharedPrefsService.getLanguage() ?? 'en',
+          );
         }
         return null;
       },
@@ -321,7 +358,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                 ),
               )
             : Text(
-                'Send OTP',
+                AppStrings.getString('send_otp', langCode),
                 style: AppTheme.textTheme.labelLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -354,7 +391,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                 ),
               )
             : Text(
-                'Verify OTP',
+                AppStrings.getString('verify_otp', langCode),
                 style: AppTheme.textTheme.labelLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -368,7 +405,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
     return TextButton(
       onPressed: _isLoading ? null : _resendOTP,
       child: Text(
-        'Resend OTP',
+        AppStrings.getString('resend_otp', langCode),
         style: AppTheme.textTheme.labelLarge?.copyWith(
           color: AppTheme.primaryColor,
           fontWeight: FontWeight.w600,
@@ -397,7 +434,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
               ),
               const SizedBox(width: 8),
               Text(
-                'Demo Information',
+                AppStrings.getString('demo_information', langCode),
                 style: AppTheme.textTheme.titleSmall?.copyWith(
                   color: AppTheme.infoColor,
                   fontWeight: FontWeight.w600,
@@ -408,7 +445,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'For demo purposes, you can use any 10-digit mobile number. The OTP will be "123456" for verification.',
+            AppStrings.getString('demo_information_message', langCode),
             style: AppTheme.textTheme.bodySmall?.copyWith(
               color: AppTheme.textSecondaryColor,
               fontSize: isSmallScreen ? 11 : 12,
@@ -532,39 +569,111 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
     }
 
     // Fire the network request in the background (no loading spinner, no UI feedback)
-    final url = Uri.parse(
-      'https://smart-farmer-backend.vercel.app/api/farmer/contact/?contact=${_mobileController.text.trim()}',
-    );
-    http
-        .post(url)
-        .then((response) {
-          log("Response status: ${response.statusCode}");
-          log("Response body: ${response.body}");
-          try {
-            final data = json.decode(response.body);
-            log("Decoded Body: $data");
-          } catch (e) {
-            log("Error decoding response body: $e");
-          }
-        })
-        .catchError((e) {
-          log("Network error: $e");
-        });
+    // final url = Uri.parse(
+    //   'https://smart-farmer-backend.vercel.app/api/farmer/contact/?contact=${_mobileController.text.trim()}',
+    // );
+    // http
+    //     .post(url)
+    //     .then((response) {
+    //       log("Response status: ${response.statusCode}");
+    //       log("Response body: ${response.body}");
+    //       try {
+    //         final data = json.decode(response.body);
+    //         log("Decoded Body: $data");
+    //       } catch (e) {
+    //         log("Error decoding response body: $e");
+    //       }
+    //     })
+    //     .catchError((e) {
+    //       log("Network error: $e");
+    //     });
   }
 
   Future<void> _verifyOTP() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
-    // Simulate verification delay
-    await Future.delayed(const Duration(seconds: 1));
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => LanguageSelectionScreen()));
-
-    if (mounted) {
-      setState(() => _isLoading = false);
+    try {
+      // Call the login API (fetch farmer by contact)
+      final url = Uri.parse(
+        'https://smart-farmer-backend.vercel.app/api/farmer/contact?contact=${_mobileController.text.trim()}',
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['farmer'] != null && data['token'] != null) {
+          // Save to shared preferences (like registration)
+          await AuthService.saveCurrentUserFromBackend({
+            'success': true,
+            'farmer': data['farmer'],
+            'token': data['token'],
+          });
+          // Save to local database
+          final farmerJson = data['farmer'];
+          final farmer = Farmer(
+            id: farmerJson['_id'],
+            name: farmerJson['name'],
+            contactNumber: farmerJson['contact'],
+            aadhaarNumber: farmerJson['aadhaarNumber'],
+            village: farmerJson['village'],
+            landmark: farmerJson['landMark'],
+            taluka: farmerJson['taluka'],
+            district: farmerJson['district'],
+            pincode: farmerJson['pincode'],
+            createdAt: DateTime.parse(farmerJson['createdAt']),
+            updatedAt: DateTime.parse(farmerJson['updatedAt']),
+          );
+          await DatabaseService.deleteAllFarmers();
+          await DatabaseService.insertFarmer(farmer);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(data['message'] ?? 'Login successful!'),
+                backgroundColor: AppTheme.successColor,
+              ),
+            );
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => FarmerDashboardScreen()),
+              (route) => false,
+            );
+          }
+        }
+      } else {
+        // if (mounted) {
+        //   ScaffoldMessenger.of(context).showSnackBar(
+        //     SnackBar(
+        //       // content: Text('Login failed: ${response.body}'),
+        //       content: Text(
+        //         json.decode(response.body)['message'] ?? 'Login failed',
+        //       ),
+        //       backgroundColor: AppTheme.errorColor,
+        //     ),
+        //   );
+        // }
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => FarmerRegistrationScreen(
+                initialContact: _mobileController.text.trim(),
+              ),
+            ),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login failed: ${e.toString()}'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -585,144 +694,5 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
         ),
       );
     }
-  }
-
-  Widget _buildRoleSelection(
-    String langCode,
-    bool isSmallScreen,
-    bool isPortrait,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Select Your Role',
-          style: AppTheme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: isSmallScreen ? 16 : 18,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Choose how you want to use SmartFarmer',
-          style: AppTheme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontSize: isSmallScreen ? 12 : 14,
-          ),
-        ),
-        SizedBox(height: isSmallScreen ? 12 : 16),
-        isPortrait && isSmallScreen
-            ? Column(
-                children: [
-                  _buildRoleChip(
-                    AppConstants.roleFarmer,
-                    Icons.person,
-                    'Farmer',
-                    'Manage crops & profile',
-                    isSmallScreen,
-                  ),
-                ],
-              )
-            : GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: isPortrait ? 3 : 1,
-                childAspectRatio: isPortrait ? 0.8 : 3.5,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                children: [
-                  _buildRoleChip(
-                    AppConstants.roleFarmer,
-                    Icons.person,
-                    'Farmer',
-                    'Manage crops & profile',
-                    isSmallScreen,
-                  ),
-                ],
-              ),
-      ],
-    );
-  }
-
-  Widget _buildRoleChip(
-    String role,
-    IconData icon,
-    String title,
-    String subtitle,
-    bool isSmallScreen,
-  ) {
-    final isSelected = selectedRole == role;
-
-    return GestureDetector(
-      onTap: () => setState(() => selectedRole = role),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          vertical: isSmallScreen ? 12 : 16,
-          horizontal: isSmallScreen ? 8 : 12,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
-            width: isSelected ? 2 : 1.5,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Colors.white.withOpacity(0.2)
-                    : AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: isSelected ? Colors.white : AppTheme.primaryColor,
-                size: isSmallScreen ? 20 : 24,
-              ),
-            ),
-            SizedBox(height: isSmallScreen ? 6 : 8),
-            Text(
-              title,
-              style: AppTheme.textTheme.titleMedium?.copyWith(
-                color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
-                fontWeight: FontWeight.w600,
-                fontSize: isSmallScreen ? 14 : 16,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Flexible(
-              child: Text(
-                subtitle,
-                style: AppTheme.textTheme.labelSmall?.copyWith(
-                  color: isSelected
-                      ? Colors.white70
-                      : AppTheme.textSecondaryColor,
-                  fontSize: isSmallScreen ? 10 : 12,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

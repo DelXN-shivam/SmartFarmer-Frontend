@@ -34,88 +34,11 @@ class _LocationFilterScreenState extends State<LocationFilterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(AppStrings.getString('location_filter', langCode)),
-        actions: [
-          TextButton(
-            onPressed: _clearFilters,
-            child: Text(AppStrings.getString('clear', langCode)),
-          ),
-        ],
       ),
-      body: BlocBuilder<FilterBloc, FilterState>(
-        builder: (context, state) {
-          if (state is FilterLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state is FilterLoaded) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildDropdown(
-                    label: AppStrings.getString('district', langCode),
-                    value: _selectedDistrict,
-                    items: state.districts,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedDistrict = value;
-                        _selectedTaluka = null;
-                        _selectedVillage = null;
-                      });
-                      _applyFilters();
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDropdown(
-                    label: AppStrings.getString('taluka', langCode),
-                    value: _selectedTaluka,
-                    items: state.talukas,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedTaluka = value;
-                        _selectedVillage = null;
-                      });
-                      _applyFilters();
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDropdown(
-                    label: AppStrings.getString('village', langCode),
-                    value: _selectedVillage,
-                    items: state.villages,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedVillage = value;
-                      });
-                      _applyFilters();
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _applyFilters,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: Text(
-                      AppStrings.getString('filter_by_location', langCode),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Expanded(child: _buildFilteredResults()),
-                ],
-              ),
-            );
-          }
-          return Center(
-            child: Text(AppStrings.getString('no_data_found', langCode)),
-          );
-        },
+      body: Center(
+        child: Text(
+          'Location filtering is not available. Only the current farmer is stored.',
+        ),
       ),
     );
   }
@@ -257,24 +180,5 @@ class _LocationFilterScreenState extends State<LocationFilterScreen> {
         ],
       ),
     );
-  }
-
-  void _applyFilters() {
-    context.read<FarmerBloc>().add(
-      FilterFarmersByLocation(
-        village: _selectedVillage,
-        taluka: _selectedTaluka,
-        district: _selectedDistrict,
-      ),
-    );
-  }
-
-  void _clearFilters() {
-    setState(() {
-      _selectedVillage = null;
-      _selectedTaluka = null;
-      _selectedDistrict = null;
-    });
-    context.read<FarmerBloc>().add(LoadFarmers());
   }
 }
