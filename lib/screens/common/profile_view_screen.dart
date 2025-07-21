@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../constants/strings.dart';
-import '../../constants/app_constants.dart';
-// import '../../models/farmer.dart';
-import '../../services/shared_prefs_service.dart';
-import '../../blocs/farmer/farmer_bloc.dart';
-import '../../blocs/farmer/farmer_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../blocs/farmer/farmer_bloc.dart';
+import '../../blocs/farmer/farmer_state.dart';
+import '../../constants/app_constants.dart';
+import '../../constants/strings.dart';
+import '../../models/farmer.dart';
+import '../../services/shared_prefs_service.dart';
+import '../farmer/edit_farmer_details.dart';
 
 class ProfileViewScreen extends StatelessWidget {
   final String userId;
@@ -39,271 +41,137 @@ class ProfileViewScreen extends StatelessWidget {
         return BlocBuilder<FarmerBloc, FarmerState>(
           builder: (context, state) {
             final farmer = (state is SingleFarmerLoaded) ? state.farmer : null;
-            final name = profileData != null && profileData['name'] != null
-                ? profileData['name']
-                : farmer?.name ?? '';
+            final name = profileData?['name'] ?? farmer?.name ?? '';
             final aadhaar =
-                profileData != null && profileData['aadhaarNumber'] != null
-                ? profileData['aadhaarNumber']
-                : farmer?.aadhaarNumber ?? '';
+                profileData?['aadhaarNumber'] ?? farmer?.aadhaarNumber ?? '';
             final contact =
-                profileData != null && profileData['contactNumber'] != null
-                ? profileData['contactNumber']
-                : farmer?.contactNumber ?? '';
-            final village =
-                profileData != null && profileData['village'] != null
-                ? profileData['village']
-                : farmer?.village ?? '';
-            final taluka = profileData != null && profileData['taluka'] != null
-                ? profileData['taluka']
-                : farmer?.taluka ?? '';
-            final district =
-                profileData != null && profileData['district'] != null
-                ? profileData['district']
-                : farmer?.district ?? '';
-            final pincode =
-                profileData != null && profileData['pincode'] != null
-                ? profileData['pincode']
-                : farmer?.pincode ?? '';
-            final id = profileData != null && profileData['id'] != null
-                ? profileData['id']
-                : farmer?.id ?? '';
+                profileData?['contactNumber'] ?? farmer?.contactNumber ?? '';
+            final village = profileData?['village'] ?? farmer?.village ?? '';
+            final taluka = profileData?['taluka'] ?? farmer?.taluka ?? '';
+            final district = profileData?['district'] ?? farmer?.district ?? '';
+            final pincode = profileData?['pincode'] ?? farmer?.pincode ?? '';
+            final id = profileData?['id'] ?? farmer?.id ?? '';
             final createdAt =
-                profileData != null && profileData['createdAt'] != null
-                ? profileData['createdAt']
-                : (farmer?.createdAt != null
-                      ? farmer!.createdAt.toString().split(' ')[0]
-                      : '');
+                profileData?['createdAt'] ??
+                (farmer?.createdAt != null
+                    ? farmer!.createdAt.toString().split(' ')[0]
+                    : '');
 
             return Scaffold(
-              appBar: AppBar(
-                title: Text(AppStrings.getString('profile', langCode)),
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () {
-                      // TODO: Navigate to edit profile
-                    },
-                  ),
-                ],
-              ),
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Profile Header
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              radius: 50,
-                              backgroundColor: Colors.green,
-                              child: Text(
-                                name.isNotEmpty
-                                    ? name.substring(0, 2).toUpperCase()
-                                    : '',
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
+              backgroundColor: const Color(0xFFF8FFFE),
+              body: CustomScrollView(
+                slivers: [
+                  _buildSliverAppBar(context, farmer),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildProfileHeader(name, langCode),
+                          const SizedBox(height: 24),
+                          _buildQuickStats(),
+                          const SizedBox(height: 24),
+                          _buildDetailsSection(
+                            title: AppStrings.getString(
+                              'personal_information',
+                              langCode,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
+                            sectionIcon: Icons.person_outline,
+                            details: [
+                              _buildDetailRow(
+                                AppStrings.getString('name', langCode),
+                                name,
+                                Icons.person,
+                                const Color(0xFF4CAF50),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.green),
-                              ),
-                              child: Text(
-                                _getRoleDisplayName(
-                                  AppConstants.roleFarmer,
+                              _buildDetailRow(
+                                AppStrings.getString(
+                                  'contact_number',
                                   langCode,
                                 ),
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                contact,
+                                Icons.phone,
+                                const Color(0xFF2196F3),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Personal Information
-                    _buildSection(
-                      title: AppStrings.getString(
-                        'personal_information',
-                        langCode,
-                      ),
-                      children: [
-                        _buildInfoRow(
-                          AppStrings.getString('name', langCode),
-                          name,
-                          Icons.person,
-                        ),
-                        _buildInfoRow(
-                          AppStrings.getString('contact_number', langCode),
-                          contact,
-                          Icons.phone,
-                        ),
-                        _buildInfoRow(
-                          AppStrings.getString('aadhaar_number', langCode),
-                          aadhaar,
-                          Icons.credit_card,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Address Information
-                    _buildSection(
-                      title: AppStrings.getString(
-                        'address_information',
-                        langCode,
-                      ),
-                      children: [
-                        _buildInfoRow(
-                          AppStrings.getString('village', langCode),
-                          village,
-                          Icons.location_city,
-                        ),
-                        _buildInfoRow(
-                          AppStrings.getString('taluka', langCode),
-                          taluka,
-                          Icons.location_on,
-                        ),
-                        _buildInfoRow(
-                          AppStrings.getString('district', langCode),
-                          district,
-                          Icons.location_on,
-                        ),
-                        _buildInfoRow(
-                          AppStrings.getString('pincode', langCode),
-                          pincode,
-                          Icons.pin_drop,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Statistics (for farmers)
-                    _buildSection(
-                      title: AppStrings.getString(
-                        'farming_statistics',
-                        langCode,
-                      ),
-                      children: [
-                        _buildStatCard(
-                          AppStrings.getString('total_crops', langCode),
-                          '12',
-                          Icons.agriculture,
-                          Colors.green,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildStatCard(
-                          AppStrings.getString('total_area', langCode),
-                          '45 acres',
-                          Icons.area_chart,
-                          Colors.blue,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildStatCard(
-                          AppStrings.getString('verified_crops', langCode),
-                          '8',
-                          Icons.verified,
-                          Colors.orange,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Account Information
-                    _buildSection(
-                      title: AppStrings.getString(
-                        'account_information',
-                        langCode,
-                      ),
-                      children: [
-                        _buildInfoRow(
-                          AppStrings.getString('user_id', langCode),
-                          id,
-                          Icons.badge,
-                        ),
-                        _buildInfoRow(
-                          AppStrings.getString('registration_date', langCode),
-                          createdAt,
-                          Icons.calendar_today,
-                        ),
-                        _buildInfoRow(
-                          AppStrings.getString('last_login', langCode),
-                          '', // You can fill this if you track last login
-                          Icons.access_time,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              // TODO: Navigate to edit profile
-                            },
-                            icon: const Icon(Icons.edit),
-                            label: Text(
-                              AppStrings.getString('edit_profile', langCode),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
+                              _buildDetailRow(
+                                AppStrings.getString(
+                                  'aadhaar_number',
+                                  langCode,
+                                ),
+                                aadhaar,
+                                Icons.credit_card,
+                                const Color(0xFFFF9800),
+                                isLast: true,
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              // TODO: Share profile
-                            },
-                            icon: const Icon(Icons.share),
-                            label: Text(
-                              AppStrings.getString('share_profile', langCode),
+                          const SizedBox(height: 24),
+                          _buildDetailsSection(
+                            title: AppStrings.getString(
+                              'address_information',
+                              langCode,
                             ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.green,
-                              side: const BorderSide(color: Colors.green),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
+                            sectionIcon: Icons.location_on_outlined,
+                            details: [
+                              _buildDetailRow(
+                                AppStrings.getString('village', langCode),
+                                village,
+                                Icons.location_city,
+                                const Color(0xFF4CAF50),
+                              ),
+                              _buildDetailRow(
+                                AppStrings.getString('taluka', langCode),
+                                taluka,
+                                Icons.location_on,
+                                const Color(0xFF2196F3),
+                              ),
+                              _buildDetailRow(
+                                AppStrings.getString('district', langCode),
+                                district,
+                                Icons.location_on,
+                                const Color(0xFFFF9800),
+                              ),
+                              _buildDetailRow(
+                                AppStrings.getString('pincode', langCode),
+                                pincode,
+                                Icons.pin_drop,
+                                const Color(0xFFF44336),
+                                isLast: true,
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 24),
+                          _buildDetailsSection(
+                            title: AppStrings.getString(
+                              'account_information',
+                              langCode,
+                            ),
+                            sectionIcon: Icons.badge_outlined,
+                            details: [
+                              _buildDetailRow(
+                                AppStrings.getString('user_id', langCode),
+                                id,
+                                Icons.badge,
+                                const Color(0xFF4CAF50),
+                              ),
+                              _buildDetailRow(
+                                AppStrings.getString(
+                                  'registration_date',
+                                  langCode,
+                                ),
+                                createdAt,
+                                Icons.calendar_today,
+                                const Color(0xFF2196F3),
+                                isLast: true,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },
@@ -312,48 +180,230 @@ class ProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSection({
-    required String title,
-    required List<Widget> children,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  Widget _buildSliverAppBar(BuildContext context, Farmer? farmer) {
+    return SliverAppBar(
+      floating: false,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      title: const Text(
+        'Profile Details',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+        ),
+      ),
+      centerTitle: true,
+      actions: [
+        Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.edit_outlined,
+              color: Colors.white,
+              size: 20,
             ),
-            const SizedBox(height: 16),
-            ...children,
+            tooltip: 'Edit Profile',
+            onPressed: () => _navigateToEditProfile(context, farmer),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _navigateToEditProfile(BuildContext context, Farmer? farmer) {
+    if (farmer != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => FarmerDetailsForm(farmer: farmer),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Farmer details not available for editing.'),
+        ),
+      );
+    }
+  }
+
+  Widget _buildProfileHeader(String name, String langCode) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4CAF50).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 35,
+              backgroundColor: Colors.white.withOpacity(0.25),
+              child: Text(
+                name.isNotEmpty ? name.substring(0, 2).toUpperCase() : '',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+  Widget _buildQuickStats() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            'Total Crops',
+            '12',
+            '',
+            Icons.agriculture,
+            const Color(0xFF2196F3),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            'Total Area',
+            '45',
+            'acres',
+            Icons.area_chart,
+            const Color(0xFFFF9800),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            'Verified Crops',
+            '8',
+            '',
+            Icons.verified,
+            Colors.green,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(
+    String title,
+    String value,
+    String unit,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.grey[600], size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          RichText(
+            text: TextSpan(
+              text: value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
               children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 16,
+                TextSpan(
+                  text: ' $unit',
+                  style: TextStyle(
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
                   ),
                 ),
               ],
@@ -364,40 +414,107 @@ class ProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildDetailsSection({
+    required String title,
+    required IconData sectionIcon,
+    required List<Widget> details,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Row(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    sectionIcon,
+                    color: const Color(0xFF1976D2),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Text(
                   title,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                Text(
-                  value,
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[800],
                   ),
                 ),
               ],
+            ),
+          ),
+          ...details,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    bool isLast = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : Border(bottom: BorderSide(color: Colors.grey[100]!, width: 1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Color(0xFF37474F),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

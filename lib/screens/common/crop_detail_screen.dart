@@ -802,7 +802,7 @@ class CropDetailScreen extends StatelessWidget {
   }
 
   void _handleEditCrop(BuildContext context) async {
-    final updatedCrop = await Navigator.push(
+    final updatedCropData = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CropDetailsForm(
@@ -812,23 +812,13 @@ class CropDetailScreen extends StatelessWidget {
       ),
     );
 
-    if (updatedCrop != null) {
-      // Update the crop in globalCropList
-      final idx = globalCropList.indexWhere(
-        (c) =>
-            (c is Map ? c['_id'] : c.id) ==
-            (updatedCrop is Map ? updatedCrop['_id'] : updatedCrop.id),
-      );
-      if (idx != -1) {
-        globalCropList[idx] = updatedCrop;
-      }
-
-      // Refresh the detail screen with new data
-      Navigator.of(context).pop();
-      Navigator.push(
-        context,
+    if (updatedCropData != null) {
+      // The edit form returned new data. Refresh the detail screen.
+      Navigator.of(context).pop(); // Close the current detail screen.
+      Navigator.of(context).push(
+        // Open a new one with the updated data.
         MaterialPageRoute(
-          builder: (context) => CropDetailScreen(crop: updatedCrop),
+          builder: (context) => CropDetailScreen(crop: updatedCropData),
         ),
       );
     }

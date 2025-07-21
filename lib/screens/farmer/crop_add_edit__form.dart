@@ -946,13 +946,20 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                           right: 4,
                           child: GestureDetector(
                             onTap: () async {
-                              final publicId = _imageCloudinaryPublicIds[index];
-                              // Delete from Cloudinary
-                              await _deleteImageFromCloudinary(publicId);
-                              setState(() {
-                                _imageCloudinaryUrls.removeAt(index);
-                                _imageCloudinaryPublicIds.removeAt(index);
-                              });
+                              if (index < _imageCloudinaryPublicIds.length) {
+                                final publicId =
+                                    _imageCloudinaryPublicIds[index];
+                                // Delete from Cloudinary
+                                await _deleteImageFromCloudinary(publicId);
+                                setState(() {
+                                  _imageCloudinaryUrls.removeAt(index);
+                                  _imageCloudinaryPublicIds.removeAt(index);
+                                });
+                              } else {
+                                debugPrint(
+                                  'Image index $index out of range for public IDs list',
+                                );
+                              }
                             },
                             child: Container(
                               padding: const EdgeInsets.all(4),
@@ -1302,12 +1309,12 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
   Future<void> _deleteImageFromCloudinary(String publicId) async {
     // Use Cloudinary destroy API (requires basic auth)
     final url =
-        'https://api.cloudinary.com/v1_1/$cloudinaryCloudName/resources/image/upload';
+        'https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/destroy';
     final basicAuth =
         'Basic ' +
         base64Encode(utf8.encode('$cloudinaryApiKey:$cloudinaryApiSecret'));
     final response = await http.post(
-      Uri.parse('$url/destroy'),
+      Uri.parse(url),
       headers: {'Authorization': basicAuth, 'Content-Type': 'application/json'},
       body: jsonEncode({'public_id': publicId}),
     );
@@ -1319,36 +1326,35 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
   }
 
   Future<void> submitCropToBackend(Crop crop) async {
-    // Construct Cloudinary image URLs from public_id
-    List<String> imageUrls = _imageCloudinaryPublicIds
-        .map(
-          (publicId) =>
-              'https://res.cloudinary.com/$cloudinaryCloudName/image/upload/$publicId',
-        )
-        .toList();
+    // Use the image paths from the crop object directly. These are the full URLs.
+    final List<String> imageUrls = crop.imagePaths;
 
-    final url =
-        'https://smart-farmer-backend.vercel.app/api/crop/add/${widget.farmerId}';
+    final isUpdate = widget.crop != null;
+    final url = isUpdate
+        ? 'https://smart-farmer-backend.vercel.app/api/crop/update/${widget.crop!.id}'
+        : 'https://smart-farmer-backend.vercel.app/api/crop/add/${widget.farmerId}';
+
+    final method = isUpdate ? 'PATCH' : 'POST';
 
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "name": crop.cropName,
-          "area": {"value": crop.area, "unit": _selectedAreaUnit},
-          "sowingDate": crop.sowingDate.toIso8601String(),
-          "expectedFirstHarvestDate": crop.expectedFirstHarvestDate
-              .toIso8601String(),
-          "expectedLastHarvestDate": crop.expectedLastHarvestDate
-              .toIso8601String(),
-          "expectedYield": crop.expectedYield,
-          "previousCrop": crop.previousCrop,
-          "latitude": crop.latitude,
-          "longitude": crop.longitude,
-          "images": imageUrls,
-        }),
-      );
+      final request = http.Request(method, Uri.parse(url));
+      request.headers["Content-Type"] = "application/json";
+      request.body = jsonEncode({
+        "name": crop.cropName,
+        "area": {"value": crop.area, "unit": _selectedAreaUnit},
+        "sowingDate": crop.sowingDate.toIso8601String(),
+        "expectedFirstHarvestDate": crop.expectedFirstHarvestDate
+            .toIso8601String(),
+        "expectedLastHarvestDate": crop.expectedLastHarvestDate
+            .toIso8601String(),
+        "expectedYield": crop.expectedYield,
+        "previousCrop": crop.previousCrop,
+        "latitude": crop.latitude,
+        "longitude": crop.longitude,
+        "images": imageUrls,
+      });
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
@@ -1356,23 +1362,32 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                responseData['message'] ?? 'Crop added successfully',
+                responseData['message'] ??
+                    (isUpdate
+                        ? 'Crop updated successfully'
+                        : 'Crop added successfully'),
               ),
               backgroundColor: Colors.green,
             ),
           );
         }
-        debugPrint('Crop added successfully: \\${response.body}');
+        debugPrint(
+          'Crop ${isUpdate ? 'updated' : 'added'} successfully: \\${response.body}',
+        );
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to add crop: \\${response.body}'),
+              content: Text(
+                'Failed to ${isUpdate ? 'update' : 'add'} crop: \\${response.body}',
+              ),
               backgroundColor: Colors.red,
             ),
           );
         }
-        debugPrint('Failed to add crop: \\${response.body}');
+        debugPrint(
+          'Failed to ${isUpdate ? 'update' : 'add'} crop: \\${response.body}',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -1424,37 +1439,14 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       await submitCropToBackend(crop);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    widget.crop == null
-                        ? AppStrings.getString(
-                            'data_saved_successfully',
-                            SharedPrefsService.getLanguage() ?? 'en',
-                          )
-                        : AppStrings.getString(
-                            'data_updated_successfully',
-                            SharedPrefsService.getLanguage() ?? 'en',
-                          ),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF4CAF50),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-
-        Navigator.of(context).pop();
+        if (widget.crop != null) {
+          // It's an update, fetch the latest data and pass it back.
+          final updatedCropData = await _fetchCropById(widget.crop!.id);
+          Navigator.of(context).pop(updatedCropData);
+        } else {
+          // It's a new crop, just pop.
+          Navigator.of(context).pop();
+        }
       }
       setState(() {
         _isSubmitting = false;
@@ -1479,6 +1471,24 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
           ),
         );
       }
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchCropById(String cropId) async {
+    try {
+      final url = 'https://smart-farmer-backend.vercel.app/api/crop/$cropId';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['crop'] as Map<String, dynamic>?;
+      } else {
+        debugPrint('Failed to fetch crop by ID: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error fetching crop by ID: $e');
+      return null;
     }
   }
 

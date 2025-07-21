@@ -13,13 +13,14 @@ import '../../constants/strings.dart';
 import '../../services/shared_prefs_service.dart';
 import '../search/search_screen.dart';
 import '../filter/location_filter_screen.dart';
-import 'farmer_details_form.dart';
+import 'edit_farmer_details.dart';
 import 'crop_add_edit__form.dart';
 import '../common/crop_detail_screen.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
+import 'package:smart_farmer/screens/common/profile_view_screen.dart';
 
 class FarmerDashboardScreen extends StatefulWidget {
   const FarmerDashboardScreen({super.key});
@@ -338,7 +339,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
           offset: Offset(0, _slideAnimation.value),
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(
-              top: 10,
+              top: 20,
               left: 20,
               right: 20,
               bottom: 20,
@@ -747,8 +748,6 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 10),
-
               //  Profile Header
               _buildProfileHeader(),
               const SizedBox(height: 32),
@@ -864,34 +863,86 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _navigateToProfileForm(),
-                      borderRadius: BorderRadius.circular(16),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.edit_rounded,
-                              color: Color(0xFF2E7D32),
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Edit Profile',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF2E7D32),
-                                fontWeight: FontWeight.w600,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              final userId =
+                                  SharedPrefsService.getUserId() ?? '';
+                              final userRole =
+                                  SharedPrefsService.getUserRole() ?? '';
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProfileViewScreen(
+                                    userId: userId,
+                                    userRole: userRole,
+                                  ),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.visibility_rounded,
+                                    color: Color(0xFF2E7D32),
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'View',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF2E7D32),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _navigateToProfileForm(),
+                            borderRadius: BorderRadius.circular(16),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.edit_rounded,
+                                    color: Color(0xFF2E7D32),
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Edit',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF2E7D32),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1963,10 +2014,20 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
           builder: (context) => FarmerDetailsForm(farmer: state.farmers.first),
         ),
       );
+    } else if (state is FarmerLoading) {
+      // Show loading indicator while waiting for data
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const FarmerDetailsForm()),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Farmer data is not loaded yet. Please try again later.',
+          ),
+        ),
       );
     }
   }
