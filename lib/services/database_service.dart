@@ -5,6 +5,8 @@ import '../constants/app_constants.dart';
 import '../models/farmer.dart';
 import '../models/crop.dart';
 import '../models/verification.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class DatabaseService {
   static Database? _database;
@@ -163,6 +165,34 @@ class DatabaseService {
       developer.log('Error getting farmer by ID: $e', name: 'DatabaseService');
       rethrow;
     }
+  }
+
+  static Future<Farmer?> fetchFarmerByIdFromApi(String farmerId) async {
+    final url = 'https://smart-farmer-backend.vercel.app/api/farmer/$farmerId';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['farmer'] != null) {
+        // Map API fields to Farmer model fields
+        final apiFarmer = data['farmer'];
+        return Farmer(
+          id: apiFarmer['_id'] ?? '',
+          name: apiFarmer['name'] ?? '',
+          contactNumber: apiFarmer['contact'] ?? '',
+          aadhaarNumber: apiFarmer['aadhaarNumber'] ?? '',
+          village: apiFarmer['village'] ?? '',
+          landmark: apiFarmer['landMark'] ?? '',
+          taluka: apiFarmer['taluka'] ?? '',
+          district: apiFarmer['district'] ?? '',
+          pincode: apiFarmer['pincode'] ?? '',
+          createdAt:
+              DateTime.tryParse(apiFarmer['createdAt'] ?? '') ?? DateTime.now(),
+          updatedAt:
+              DateTime.tryParse(apiFarmer['updatedAt'] ?? '') ?? DateTime.now(),
+        );
+      }
+    }
+    return null;
   }
 
   static Future<int> updateFarmer(Farmer farmer) async {

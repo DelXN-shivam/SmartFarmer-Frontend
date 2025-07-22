@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
+import 'dart:convert';
 
 class SharedPrefsService {
   static SharedPreferences? _prefs;
@@ -42,6 +43,10 @@ class SharedPrefsService {
   static Future<bool> setLoggedIn(bool isLoggedIn) async {
     return await _prefs?.setBool(AppConstants.keyIsLoggedIn, isLoggedIn) ??
         false;
+  }
+
+  static Future<void> saveFarmerData(Map<String, dynamic> data) async {
+    await _prefs?.setString('user_data', json.encode(data));
   }
 
   // Clear all data
