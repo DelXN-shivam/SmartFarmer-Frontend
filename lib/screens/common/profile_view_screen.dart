@@ -414,57 +414,133 @@ class ProfileViewScreen extends StatelessWidget {
     );
   }
 
+  // Widget _buildDetailsSection({
+  //   required String title,
+  //   required IconData sectionIcon,
+  //   required List<Widget> details,
+  // }) {
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: BorderRadius.circular(20),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.black.withOpacity(0.05),
+  //           blurRadius: 15,
+  //           offset: const Offset(0, 5),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Padding(
+  //           padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+  //           child: Row(
+  //             children: [
+  //               Container(
+  //                 padding: const EdgeInsets.all(8),
+  //                 decoration: BoxDecoration(
+  //                   color: const Color(0xFFE3F2FD),
+  //                   borderRadius: BorderRadius.circular(10),
+  //                 ),
+  //                 child: Icon(
+  //                   sectionIcon,
+  //                   color: const Color(0xFF1976D2),
+  //                   size: 20,
+  //                 ),
+  //               ),
+  //               const SizedBox(width: 12),
+  //               Text(
+  //                 title,
+  //                 style: TextStyle(
+  //                   fontSize: 18,
+  //                   fontWeight: FontWeight.w700,
+  //                   color: Colors.grey[800],
+  //                   overflow: TextOverflow.ellipsis,
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //         ...details,
+  //       ],
+  //     ),
+  //   );
+  // }
   Widget _buildDetailsSection({
     required String title,
     required IconData sectionIcon,
     required List<Widget> details,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate responsive values based on screen width
+        final bool isSmallScreen = constraints.maxWidth < 400;
+        final double titleFontSize = isSmallScreen ? 16.0 : 18.0;
+        final double iconSize = isSmallScreen ? 18.0 : 20.0;
+        final double horizontalPadding = isSmallScreen ? 16.0 : 24.0;
+        final double verticalPadding = isSmallScreen ? 16.0 : 24.0;
+        final double iconPadding = isSmallScreen ? 6.0 : 8.0;
+        final double iconBoxRadius = isSmallScreen ? 8.0 : 10.0;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    sectionIcon,
-                    color: const Color(0xFF1976D2),
-                    size: 20,
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  verticalPadding,
+                  horizontalPadding,
+                  verticalPadding * 0.66, // 16 if 24, ~10.6 if 16
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[800],
-                  ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(iconPadding),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE3F2FD),
+                        borderRadius: BorderRadius.circular(iconBoxRadius),
+                      ),
+                      child: Icon(
+                        sectionIcon,
+                        color: const Color(0xFF1976D2),
+                        size: iconSize,
+                      ),
+                    ),
+                    SizedBox(width: isSmallScreen ? 8 : 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: titleFontSize,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey[800],
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 2,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              ...details,
+            ],
           ),
-          ...details,
-        ],
-      ),
+        );
+      },
     );
   }
 

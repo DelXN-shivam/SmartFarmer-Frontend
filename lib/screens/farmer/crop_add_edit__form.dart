@@ -56,14 +56,22 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
   List<String> _imageSources = [];
   final List<String> _areaUnits = ['acre', 'guntha'];
   String _selectedAreaUnit = 'acre';
+  List<String> _filteredCrops = [];
+  final FocusNode _cropNameFocusNode = FocusNode();
 
   // --- New loading states ---
   bool _isImageUploading = false;
   bool _isSubmitting = false;
+  bool _showSuggestions = false;
 
   @override
   void initState() {
     super.initState();
+    _cropNameFocusNode.addListener(() {
+      if (!_cropNameFocusNode.hasFocus) {
+        setState(() => _showSuggestions = false);
+      }
+    });
     if (widget.crop != null) {
       _cropNameController.text = widget.crop!.cropName;
       _areaController.text = widget.crop!.area.toString();
@@ -258,22 +266,14 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       children: [
         _buildSectionTitle('Basic Information', Icons.info_outline),
         const SizedBox(height: 16),
-        _buildTextField(
-          controller: _cropNameController,
-          label: AppStrings.getString('crop_name', langCode),
-          hint: 'Enter crop name',
-          icon: Icons.eco,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter crop name';
-            }
-            return null;
-          },
-        ),
+        _buildCropNameField(langCode),
+
         const SizedBox(height: 16),
         _buildAreaField(langCode),
+
         const SizedBox(height: 16),
         _buildSectionTitle('Dates & Yield', Icons.schedule),
+
         const SizedBox(height: 16),
         Row(
           children: [
@@ -352,6 +352,89 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
         _buildLocationSection(langCode),
         const SizedBox(height: 16),
         _buildImageSection(langCode),
+      ],
+    );
+  }
+
+  Widget _buildCropNameField(String langCode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppStrings.getString('crop_name', langCode),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1B5E20),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Column(
+          children: [
+            TextFormField(
+              controller: _cropNameController,
+              focusNode: _cropNameFocusNode,
+              onChanged: (value) {
+                setState(() {
+                  _filteredCrops = AppConstants.maharashtraCrops
+                      .where(
+                        (crop) =>
+                            crop.toLowerCase().contains(value.toLowerCase()),
+                      )
+                      .toList();
+                  _showSuggestions = value.isNotEmpty;
+                });
+              },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter crop name';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                hintText: 'e.g. Rice, Cotton, Sugarcane',
+                hintStyle: TextStyle(color: Colors.grey[500]),
+                prefixIcon: Icon(Icons.eco, color: Color(0xFF4CAF50), size: 20),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+              ),
+            ),
+            if (_showSuggestions && _filteredCrops.isNotEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: _filteredCrops.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(_filteredCrops[index]),
+                      onTap: () {
+                        setState(() {
+                          _cropNameController.text = _filteredCrops[index];
+                          _showSuggestions = false;
+                          FocusScope.of(context).unfocus();
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -1578,6 +1661,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
 
   @override
   void dispose() {
+    _cropNameFocusNode.dispose();
     _cropNameController.dispose();
     _areaController.dispose();
     _expectedYieldController.dispose();

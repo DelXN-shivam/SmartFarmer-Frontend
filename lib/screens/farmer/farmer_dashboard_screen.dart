@@ -44,6 +44,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
 
   bool _isCropsLoading = false;
   String? _cropsError;
+  bool _notificationsEnabled = true;
 
   // Temporary in-memory cache for fetched crops
   List<dynamic> _fetchedCrops = [];
@@ -1067,18 +1068,27 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             onTap: _showLanguageDialog,
           ),
           _buildDivider(),
-          _buildSettingTile(
-            Icons.notifications_rounded,
-            AppStrings.getString('notifications', langCode),
-            null,
-            trailing: Switch(
-              value: true,
-              onChanged: (value) {
+          GestureDetector(
+            onTap: () {
+              setState(() {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => NotificationScreen()),
                 );
-              },
-              activeColor: const Color(0xFF4CAF50),
+              });
+            },
+            child: _buildSettingTile(
+              Icons.notifications_rounded,
+              AppStrings.getString('notifications', langCode),
+              null,
+              trailing: Switch(
+                value: _notificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _notificationsEnabled = value;
+                  });
+                },
+                activeColor: const Color(0xFF4CAF50),
+              ),
             ),
           ),
           _buildDivider(),
@@ -1228,9 +1238,10 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
   // Helper Widgets
   Widget _buildLoadingCard(String message) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         color: Colors.white,
         boxShadow: [
           BoxShadow(
@@ -1242,18 +1253,24 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
       ),
       child: Row(
         children: [
-          const SizedBox(
+          // Loading indicator
+          SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(Color(0xFF4CAF50)),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                const Color(0xFF4CAF50),
+              ),
             ),
           ),
           const SizedBox(width: 16),
-          Text(
-            message,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          // Message text
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
           ),
         ],
       ),

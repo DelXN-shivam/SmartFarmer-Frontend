@@ -372,6 +372,149 @@ class AppConstants {
     ],
   };
 
+  static const List<String> maharashtraCrops = [
+    // Cereals
+    "Rice",
+    "Wheat",
+    "Jowar (Sorghum)",
+    "Bajra (Pearl Millet)",
+    "Maize",
+    "Ragi (Finger Millet)",
+    "Varai (Barnyard Millet)",
+    "Kangni (Foxtail Millet)",
+
+    // Pulses
+    "Tur (Pigeon Pea)",
+    "Moong (Green Gram)",
+    "Udid (Black Gram)",
+    "Chana (Chickpea)",
+    "Matki (Moth Bean)",
+    "Masoor (Lentil)",
+    "Wal (Horse Gram)",
+    "Kulith (Hyacinth Bean)",
+
+    // Oilseeds
+    "Soybean",
+    "Groundnut",
+    "Sunflower",
+    "Safflower",
+    "Sesame",
+    "Castor",
+    "Linseed",
+    "Niger Seed",
+
+    // Cash Crops
+    "Cotton",
+    "Sugarcane",
+    "Tobacco",
+
+    // Fruits
+    "Mango",
+    "Banana",
+    "Orange",
+    "Grapes",
+    "Pomegranate",
+    "Chikoo  (Sapota)",
+    "Custard Apple",
+    "Guava",
+    "Papaya",
+    "Jamun",
+    "Ber (Indian Plum)",
+    "Amla (Indian Gooseberry)",
+    "Fig",
+    "Karonda",
+    "Wood Apple",
+    "Tamarind",
+
+    // Vegetables
+    "Tomato",
+    "Onion",
+    "Brinjal (Eggplant)",
+    "Ladyfinger (Okra)",
+    "Chili",
+    "Cabbage",
+    "Cauliflower",
+    "Potato",
+    "Sweet Potato",
+    "Carrot",
+    "Radish",
+    "Cucumber",
+    "Bitter Gourd",
+    "Bottle Gourd",
+    "Ridge Gourd",
+    "Sponge Gourd",
+    "Spinach",
+    "Fenugreek",
+    "Drumstick",
+    "Cluster Beans",
+    "French Beans",
+    "Peas",
+    "Pumpkin",
+    "Ash Gourd",
+    "Snake Gourd",
+    "Pointed Gourd",
+    "Yam",
+    "Colocasia",
+
+    // Spices
+    "Turmeric",
+    "Coriander",
+    "Cumin",
+    "Fennel",
+    "Garlic",
+    "Ginger",
+    "Black Pepper",
+    "Cardamom",
+    "Cloves",
+    "Nutmeg",
+
+    // Flowers (expanded)
+    "Marigold",
+    "Jasmine",
+    "Rose",
+    "Chrysanthemum",
+    "Hibiscus",
+    "Crossandra",
+    "Tuberose",
+    "Gladiolus",
+    "Gerbera",
+    "Orchid",
+
+    // Medicinal Plants (expanded)
+    "Aloe Vera",
+    "Tulsi (Holy Basil)",
+    "Ashwagandha",
+    "Shatavari",
+    "Stevia",
+    "Lemongrass",
+    "Sadabahar (Vinca)",
+    "Henna",
+    "Neem",
+    "Brahmi",
+    "Kalmegh",
+    "Giloy",
+    "Mint",
+    "Basil",
+
+    // Others
+    "Cashew",
+    "Coconut",
+    "Betel Vine",
+    "Rubber",
+    "Coffee",
+    "Tea",
+    "Areca Nut",
+    "Bamboo",
+    "Sisal",
+
+    // Fodder Crops
+    "Lucerne",
+    "Berseem",
+    "Oats",
+    "Sorghum",
+    "Napier Grass",
+  ];
+
   // Verification Status
   static const String statusPending = 'pending';
   static const String statusVerified = 'verified';
