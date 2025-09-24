@@ -4,7 +4,8 @@ import '../../constants/strings.dart';
 import '../../services/shared_prefs_service.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
-  const LanguageSelectionScreen({super.key});
+  final String initialContact;
+  const LanguageSelectionScreen({super.key, required this.initialContact});
 
   @override
   State<LanguageSelectionScreen> createState() =>
@@ -189,7 +190,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      FarmerRegistrationScreen(),
+                                      FarmerRegistrationScreen(
+                                        initialContact: widget.initialContact,
+                                      ),
                                 ),
                               );
                             },

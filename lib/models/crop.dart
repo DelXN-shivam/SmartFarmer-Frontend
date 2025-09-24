@@ -5,11 +5,13 @@ class Crop {
   final String farmerId;
   final String cropName;
   final double area;
+  final String areaUnit;
   final DateTime sowingDate;
   final DateTime expectedHarvestDate;
   final DateTime expectedFirstHarvestDate;
   final DateTime expectedLastHarvestDate;
   final double expectedYield;
+  final String expectedYieldUnit;
   final String previousCrop;
   final double latitude;
   final double longitude;
@@ -24,11 +26,13 @@ class Crop {
     required this.farmerId,
     required this.cropName,
     required this.area,
+    this.areaUnit = 'acre',
     required this.sowingDate,
     required this.expectedHarvestDate,
     required this.expectedFirstHarvestDate,
     required this.expectedLastHarvestDate,
     required this.expectedYield,
+    this.expectedYieldUnit = 'kg',
     required this.previousCrop,
     required this.latitude,
     required this.longitude,
@@ -89,6 +93,9 @@ class Crop {
       area: (json['area'] != null && json['area']['value'] != null)
           ? (json['area']['value'] as num).toDouble()
           : 0.0,
+      areaUnit: (json['area'] != null && json['area']['unit'] != null)
+          ? json['area']['unit']
+          : 'acre',
       sowingDate: _parseDate(json['sowingDate']) ?? DateTime.now(),
       expectedHarvestDate:
           _parseDate(json['expectedHarvestDate']) ?? DateTime.now(),
@@ -100,7 +107,12 @@ class Crop {
           _parseDate(json['expectedLastHarvestDate']) ??
           _parseDate(json['expectedHarvestDate']) ??
           DateTime.now(),
-      expectedYield: (json['expectedYield'] ?? 0).toDouble(),
+      expectedYield: (json['expectedYield'] != null && json['expectedYield'] is Map && json['expectedYield']['value'] != null)
+          ? (json['expectedYield']['value'] as num).toDouble()
+          : (json['expectedYield'] is num ? (json['expectedYield'] as num).toDouble() : 0.0),
+      expectedYieldUnit: (json['expectedYield'] != null && json['expectedYield'] is Map && json['expectedYield']['unit'] != null)
+          ? json['expectedYield']['unit']
+          : 'kg',
       previousCrop: json['previousCrop'] ?? '',
       latitude: (json['latitude'] ?? 0.0).toDouble(),
       longitude: (json['longitude'] ?? 0.0).toDouble(),

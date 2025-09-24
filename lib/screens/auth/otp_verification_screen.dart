@@ -1,20 +1,18 @@
 import 'dart:developer';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
+import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
 import 'package:smart_farmer/screens/common/language_selection.dart';
-// import 'package:smart_farmer/screens/farmer/farmer_dashboard_screen.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/strings.dart';
 import '../../constants/app_theme.dart';
 import '../../services/shared_prefs_service.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/farmer.dart';
 import '../../screens/farmer/farmer_dashboard_screen.dart';
-import 'package:smart_farmer/screens/auth/farmer_registration_screen.dart';
+import '../verifier/verifier_dashboard_screen.dart';
 
 class MobileOTPScreen extends StatefulWidget {
   const MobileOTPScreen({super.key});
@@ -242,9 +240,6 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                                 ],
                               ),
                             ),
-                            SizedBox(height: isSmallScreen ? 16 : 24),
-                            // Demo Info
-                            _buildDemoInfo(langCode, isSmallScreen),
                           ],
                         ),
                       ),
@@ -385,9 +380,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                child: CupertinoActivityIndicator(
+                  color: Colors.white,
+                  // strokeWidth: 2,
+                  // valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Text(
@@ -410,48 +406,6 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
           color: AppTheme.primaryColor,
           fontWeight: FontWeight.w600,
         ),
-      ),
-    );
-  }
-
-  Widget _buildDemoInfo(String langCode, bool isSmallScreen) {
-    return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-      decoration: BoxDecoration(
-        color: AppTheme.infoColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.infoColor.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.info_outline,
-                color: AppTheme.infoColor,
-                size: isSmallScreen ? 18 : 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                AppStrings.getString('demo_information', langCode),
-                style: AppTheme.textTheme.titleSmall?.copyWith(
-                  color: AppTheme.infoColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: isSmallScreen ? 12 : 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            AppStrings.getString('demo_information_message', langCode),
-            style: AppTheme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.textSecondaryColor,
-              fontSize: isSmallScreen ? 11 : 12,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -558,115 +512,105 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
     // Implementation depends on how you manage the 6 separate fields
   }
 
+  Map<String, dynamic>? _loginResponse;
+
   Future<void> _sendOTP() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Immediately show OTP field and update UI
+    // Immediately show OTP field
     if (mounted) {
       setState(() {
         _showOTPField = true;
       });
     }
 
-    // Fire the network request in the background (no loading spinner, no UI feedback)
-    // final url = Uri.parse(
-    //   'https://smart-farmer-backend.vercel.app/api/farmer/contact/?contact=${_mobileController.text.trim()}',
-    // );
-    // http
-    //     .post(url)
-    //     .then((response) {
-    //       log("Response status: ${response.statusCode}");
-    //       log("Response body: ${response.body}");
-    //       try {
-    //         final data = json.decode(response.body);
-    //         log("Decoded Body: $data");
-    //       } catch (e) {
-    //         log("Error decoding response body: $e");
-    //       }
-    //     })
-    //     .catchError((e) {
-    //       log("Network error: $e");
-    //     });
+    // Call login API in background
+    _loginWithContactInBackground(_mobileController.text.trim());
+  }
+
+  void _loginWithContactInBackground(String contact) {
+    AuthService.loginWithContact(contact)
+        .then((result) {
+          if (result['success'] && mounted) {
+            setState(() {
+              _loginResponse = result['data'];
+            });
+          }
+        })
+        .catchError((e) {
+          print('Background login error: $e');
+        });
   }
 
   Future<void> _verifyOTP() async {
     if (!_formKey.currentState!.validate()) return;
+    
     setState(() => _isLoading = true);
 
     try {
-      // Call the login API (fetch farmer by contact)
-      final url = Uri.parse(
-        'https://smart-farmer-backend.vercel.app/api/farmer/contact?contact=${_mobileController.text.trim()}',
-      );
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['farmer'] != null && data['token'] != null) {
-          // Save to shared preferences (like registration)
-          await AuthService.saveCurrentUserFromBackend({
-            'success': true,
-            'farmer': data['farmer'],
-            'token': data['token'],
-          });
-          // Save to local database
-          final farmerJson = data['farmer'];
-          final farmer = Farmer(
-            id: farmerJson['_id'],
-            name: farmerJson['name'],
-            contactNumber: farmerJson['contact'],
-            aadhaarNumber: farmerJson['aadhaarNumber'],
-            village: farmerJson['village'],
-            landmark: farmerJson['landMark'],
-            taluka: farmerJson['taluka'],
-            district: farmerJson['district'],
-            pincode: farmerJson['pincode'],
-            createdAt: DateTime.parse(farmerJson['createdAt']),
-            updatedAt: DateTime.parse(farmerJson['updatedAt']),
-          );
-          await DatabaseService.deleteAllFarmers();
-          await DatabaseService.insertFarmer(farmer);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(data['message'] ?? 'Login successful!'),
-                backgroundColor: AppTheme.successColor,
-              ),
-            );
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => FarmerDashboardScreen()),
-              (route) => false,
-            );
-          }
-        }
-      } else {
-        // if (mounted) {
-        //   ScaffoldMessenger.of(context).showSnackBar(
-        //     SnackBar(
-        //       // content: Text('Login failed: ${response.body}'),
-        //       content: Text(
-        //         json.decode(response.body)['message'] ?? 'Login failed',
-        //       ),
-        //       backgroundColor: AppTheme.errorColor,
-        //     ),
-        //   );
-        // }
+      // Wait for login response if not available
+      if (_loginResponse == null) {
+        await _waitForLoginResponse();
+      }
+
+      // If still no response after waiting, navigate to registration
+      if (_loginResponse == null) {
         if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'User not found. Please register first.',
+                overflow: TextOverflow.ellipsis,
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => FarmerRegistrationScreen(
+              builder: (context) => LanguageSelectionScreen(
                 initialContact: _mobileController.text.trim(),
               ),
             ),
-            (route) => false,
           );
         }
+        return;
       }
-    } catch (e) {
+
+      final role = _loginResponse!['role'];
+      final userData = _loginResponse!['data'];
+
+      log('Login successful for role: $role');
+      log('User data: $userData');
+
+      // Save user data to SharedPreferences
+      await AuthService.saveUserData(_loginResponse!);
+
+      log('User data saved to SharedPreferences');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login failed: ${e.toString()}'),
-            backgroundColor: AppTheme.errorColor,
+            content: Text(
+              _loginResponse!['message'] ?? 'Login successful!',
+              overflow: TextOverflow.ellipsis,
+            ),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+        _navigateBasedOnRole(role);
+      }
+    } catch (e) {
+      log('Login error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            // content: Text('Login failed: ${e.toString()}'),
+            content: Text(
+              'Login failed: an internal error occured',
+              overflow: TextOverflow.ellipsis,
+            ),
+            // backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -674,6 +618,37 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  void _navigateBasedOnRole(String role) {
+    log('Navigating based on role: $role');
+
+    Widget destination;
+
+    switch (role.toLowerCase()) {
+      case 'farmer':
+        destination = const FarmerDashboardScreen();
+        break;
+      case 'verifier':
+        destination = const VerifierDashboardScreen();
+        break;
+      default:
+        log('Unknown role: $role, defaulting to farmer dashboard');
+        destination = const FarmerDashboardScreen();
+    }
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => destination),
+      (route) => false,
+    );
+  }
+
+  Future<void> _waitForLoginResponse() async {
+    int attempts = 0;
+    while (_loginResponse == null && attempts < 30 && mounted) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      attempts++;
     }
   }
 
@@ -689,7 +664,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('OTP resent successfully!'),
+          content: const Text(
+            'OTP resent successfully!',
+            overflow: TextOverflow.ellipsis,
+          ),
           backgroundColor: AppTheme.successColor,
         ),
       );

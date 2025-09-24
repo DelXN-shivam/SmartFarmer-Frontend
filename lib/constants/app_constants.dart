@@ -47,7 +47,7 @@ class AppConstants {
       'Pathardi',
       'Parner',
       'Jamkhed',
-      "Karjat",
+      'Karjat',
     ],
     'Akola': ['Akola', 'Balapur', 'Patur', 'Telhara', 'Akot', 'Murtijapur'],
     'Amravati': [

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 import '../../blocs/farmer/farmer_bloc.dart';
 import '../../blocs/farmer/farmer_state.dart';
@@ -11,170 +11,187 @@ import '../../models/farmer.dart';
 import '../../services/shared_prefs_service.dart';
 import '../farmer/edit_farmer_details.dart';
 
-class ProfileViewScreen extends StatelessWidget {
+class ProfileViewScreen extends StatefulWidget {
   final String userId;
   final String userRole;
+  final VoidCallback onBack;
 
   const ProfileViewScreen({
     super.key,
     required this.userId,
     required this.userRole,
+    required this.onBack,
   });
 
-  Future<Map<String, dynamic>?> _getProfileData() async {
+  @override
+  State<ProfileViewScreen> createState() => _ProfileViewScreenState();
+}
+
+class _ProfileViewScreenState extends State<ProfileViewScreen> {
+  Map<String, dynamic>? _profileData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
     if (userDataString != null) {
-      return json.decode(userDataString) as Map<String, dynamic>;
+      setState(() {
+        _profileData = json.decode(userDataString) as Map<String, dynamic>;
+      });
     }
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
 
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _getProfileData(),
-      builder: (context, snapshot) {
-        Map<String, dynamic>? profileData = snapshot.data;
-        return BlocBuilder<FarmerBloc, FarmerState>(
-          builder: (context, state) {
-            final farmer = (state is SingleFarmerLoaded) ? state.farmer : null;
-            final name = profileData?['name'] ?? farmer?.name ?? '';
-            final aadhaar =
-                profileData?['aadhaarNumber'] ?? farmer?.aadhaarNumber ?? '';
-            final contact =
-                profileData?['contactNumber'] ?? farmer?.contactNumber ?? '';
-            final village = profileData?['village'] ?? farmer?.village ?? '';
-            final taluka = profileData?['taluka'] ?? farmer?.taluka ?? '';
-            final district = profileData?['district'] ?? farmer?.district ?? '';
-            final pincode = profileData?['pincode'] ?? farmer?.pincode ?? '';
-            final id = profileData?['id'] ?? farmer?.id ?? '';
-            final createdAt =
-                profileData?['createdAt'] ??
-                (farmer?.createdAt != null
-                    ? farmer!.createdAt.toString().split(' ')[0]
-                    : '');
+    String _formatDate(String dateString) {
+      try {
+        final date = DateTime.parse(dateString);
+        return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
+      } catch (e) {
+        return dateString.split('T')[0];
+      }
+    }
 
-            return Scaffold(
-              backgroundColor: const Color(0xFFF8FFFE),
-              body: CustomScrollView(
-                slivers: [
-                  _buildSliverAppBar(context, farmer),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildProfileHeader(name, langCode),
-                          const SizedBox(height: 24),
-                          _buildQuickStats(),
-                          const SizedBox(height: 24),
-                          _buildDetailsSection(
-                            title: AppStrings.getString(
-                              'personal_information',
-                              langCode,
-                            ),
-                            sectionIcon: Icons.person_outline,
-                            details: [
-                              _buildDetailRow(
-                                AppStrings.getString('name', langCode),
-                                name,
-                                Icons.person,
-                                const Color(0xFF4CAF50),
-                              ),
-                              _buildDetailRow(
-                                AppStrings.getString(
-                                  'contact_number',
-                                  langCode,
-                                ),
-                                contact,
-                                Icons.phone,
-                                const Color(0xFF2196F3),
-                              ),
-                              _buildDetailRow(
-                                AppStrings.getString(
-                                  'aadhaar_number',
-                                  langCode,
-                                ),
-                                aadhaar,
-                                Icons.credit_card,
-                                const Color(0xFFFF9800),
-                                isLast: true,
-                              ),
-                            ],
+    return BlocBuilder<FarmerBloc, FarmerState>(
+      builder: (context, state) {
+        // Get data from BLoC first, fallback to cached profile data
+        final farmer = (state is SingleFarmerLoaded) ? state.farmer : null;
+
+        // Merge data sources - BLoC state takes priority
+        final name = farmer?.name ?? _profileData?['name'] ?? '';
+        final aadhaar =
+            farmer?.aadhaarNumber ?? _profileData?['aadhaarNumber'] ?? '';
+        final contact =
+            farmer?.contactNumber ?? _profileData?['contactNumber'] ?? '';
+        final village = farmer?.village ?? _profileData?['village'] ?? '';
+        final taluka = farmer?.taluka ?? _profileData?['taluka'] ?? '';
+        final district = farmer?.district ?? _profileData?['district'] ?? '';
+        final pincode = farmer?.pincode ?? _profileData?['pincode'] ?? '';
+        final id = farmer?.id ?? _profileData?['id'] ?? '';
+
+        final createdAtRaw =
+            farmer?.createdAt?.toString() ?? _profileData?['createdAt'] ?? '';
+        final createdAt = createdAtRaw.isNotEmpty
+            ? _formatDate(createdAtRaw)
+            : '';
+
+        return WillPopScope(
+          onWillPop: () async {
+            widget.onBack();
+            return true;
+          },
+          child: Scaffold(
+            backgroundColor: const Color(0xFFF8FFFE),
+            body: CustomScrollView(
+              slivers: [
+                _buildSliverAppBar(context, farmer),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildProfileHeader(name, langCode),
+                        const SizedBox(height: 24),
+                        _buildQuickStats(),
+                        const SizedBox(height: 24),
+                        _buildDetailsSection(
+                          title: AppStrings.getString(
+                            'personal_information',
+                            langCode,
                           ),
-                          const SizedBox(height: 24),
-                          _buildDetailsSection(
-                            title: AppStrings.getString(
-                              'address_information',
-                              langCode,
+                          sectionIcon: Icons.person_outline,
+                          details: [
+                            _buildDetailRow(
+                              AppStrings.getString('name', langCode),
+                              name,
+                              Icons.person,
+                              const Color(0xFF4CAF50),
                             ),
-                            sectionIcon: Icons.location_on_outlined,
-                            details: [
-                              _buildDetailRow(
-                                AppStrings.getString('village', langCode),
-                                village,
-                                Icons.location_city,
-                                const Color(0xFF4CAF50),
-                              ),
-                              _buildDetailRow(
-                                AppStrings.getString('taluka', langCode),
-                                taluka,
-                                Icons.location_on,
-                                const Color(0xFF2196F3),
-                              ),
-                              _buildDetailRow(
-                                AppStrings.getString('district', langCode),
-                                district,
-                                Icons.location_on,
-                                const Color(0xFFFF9800),
-                              ),
-                              _buildDetailRow(
-                                AppStrings.getString('pincode', langCode),
-                                pincode,
-                                Icons.pin_drop,
-                                const Color(0xFFF44336),
-                                isLast: true,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          _buildDetailsSection(
-                            title: AppStrings.getString(
-                              'account_information',
-                              langCode,
+                            _buildDetailRow(
+                              AppStrings.getString('contact_number', langCode),
+                              contact,
+                              Icons.phone,
+                              const Color(0xFF2196F3),
                             ),
-                            sectionIcon: Icons.badge_outlined,
-                            details: [
-                              _buildDetailRow(
-                                AppStrings.getString('user_id', langCode),
-                                id,
-                                Icons.badge,
-                                const Color(0xFF4CAF50),
-                              ),
-                              _buildDetailRow(
-                                AppStrings.getString(
-                                  'registration_date',
-                                  langCode,
-                                ),
-                                createdAt,
-                                Icons.calendar_today,
-                                const Color(0xFF2196F3),
-                                isLast: true,
-                              ),
-                            ],
+                            _buildDetailRow(
+                              AppStrings.getString('aadhaar_number', langCode),
+                              aadhaar,
+                              Icons.credit_card,
+                              const Color(0xFFFF9800),
+                              isLast: true,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        _buildDetailsSection(
+                          title: AppStrings.getString(
+                            'address_information',
+                            langCode,
                           ),
-                        ],
-                      ),
+                          sectionIcon: Icons.location_on_outlined,
+                          details: [
+                            _buildDetailRow(
+                              AppStrings.getString('village', langCode),
+                              village,
+                              Icons.location_city,
+                              const Color(0xFF4CAF50),
+                            ),
+                            _buildDetailRow(
+                              AppStrings.getString('taluka', langCode),
+                              taluka,
+                              Icons.location_on,
+                              const Color(0xFF2196F3),
+                            ),
+                            _buildDetailRow(
+                              AppStrings.getString('district', langCode),
+                              district,
+                              Icons.location_on,
+                              const Color(0xFFFF9800),
+                            ),
+                            _buildDetailRow(
+                              AppStrings.getString('pincode', langCode),
+                              pincode,
+                              Icons.pin_drop,
+                              const Color(0xFFF44336),
+                              isLast: true,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        _buildDetailsSection(
+                          title: AppStrings.getString(
+                            'account_information',
+                            langCode,
+                          ),
+                          sectionIcon: Icons.badge_outlined,
+                          details: [
+                            _buildDetailRow(
+                              AppStrings.getString(
+                                'registration_date',
+                                langCode,
+                              ),
+                              createdAt,
+                              Icons.calendar_today,
+                              const Color(0xFF2196F3),
+                              isLast: true,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            );
-          },
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -251,7 +268,7 @@ class ProfileViewScreen extends StatelessWidget {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Farmer details not available for editing.'),
+          content: Text('Farmer details not available for editing.', overflow: TextOverflow.ellipsis,),
         ),
       );
     }

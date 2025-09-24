@@ -521,7 +521,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _navigateToRegistration({String role = AppConstants.roleFarmer}) async {
-    Widget screen = const FarmerRegistrationScreen();
+    Widget screen = const FarmerRegistrationScreen(initialContact: "");
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => screen),
@@ -533,6 +533,7 @@ class _LoginScreenState extends State<LoginScreen>
         SnackBar(
           content: const Text(
             'Registration successful! You can now login with your credentials.',
+            overflow: TextOverflow.ellipsis,
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -573,7 +574,7 @@ class _LoginScreenState extends State<LoginScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message']),
+              content: Text(result['message'], overflow: TextOverflow.ellipsis),
               backgroundColor: AppTheme.errorColor,
             ),
           );
@@ -584,7 +585,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login failed: $e'),
+            content: Text('Login failed: $e', overflow: TextOverflow.ellipsis),
             backgroundColor: AppTheme.errorColor,
           ),
         );

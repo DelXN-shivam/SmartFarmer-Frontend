@@ -232,6 +232,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           SnackBar(
             content: Text(
               AppStrings.getString('notification_deleted', langCode),
+              overflow: TextOverflow.ellipsis,
             ),
             action: SnackBarAction(
               label: AppStrings.getString('undo', langCode),
@@ -484,7 +485,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
       default:
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('${notification.title} tapped')));
+        ).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${notification.title} tapped',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
     }
   }
 
@@ -547,6 +555,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 SnackBar(
                   content: Text(
                     AppStrings.getString('notification_deleted', langCode),
+                    overflow: TextOverflow.ellipsis,
                   ),
                   action: SnackBarAction(
                     label: AppStrings.getString('undo', langCode),
@@ -576,7 +585,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(AppStrings.getString('all_marked_read', langCode)),
+        content: Text(
+          AppStrings.getString('all_marked_read', langCode),
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

@@ -18,6 +18,21 @@ class HelpSupportScreen extends StatelessWidget {
         title: Text(AppStrings.getString('help_support', langCode)),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -31,29 +46,32 @@ class HelpSupportScreen extends StatelessWidget {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Icon(Icons.help_center, size: 60, color: Colors.green),
-                    const SizedBox(height: 16),
-                    Text(
-                      AppStrings.getString('how_can_we_help', langCode),
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[800],
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    children: [
+                      Icon(Icons.help_center, size: 60, color: Colors.green),
+                      const SizedBox(height: 16),
+                      Text(
+                        AppStrings.getString('how_can_we_help', langCode),
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[800],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      AppStrings.getString(
-                        'help_support_description',
-                        langCode,
+                      const SizedBox(height: 8),
+                      Text(
+                        AppStrings.getString(
+                          'help_support_description',
+                          langCode,
+                        ),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey[600],
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -549,7 +567,12 @@ class HelpSupportScreen extends StatelessWidget {
     // If all else fails, show error
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch video player')),
+        const SnackBar(
+          content: Text(
+            'Could not launch video player',
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       );
     }
   }
@@ -587,12 +610,26 @@ class HelpSupportScreen extends StatelessWidget {
       } else {
         ScaffoldMessenger.of(
           context as BuildContext,
-        ).showSnackBar(const SnackBar(content: Text('Could not open PDF')));
+        ).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open PDF',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(
         context as BuildContext,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: an internal error occured',
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      );
     }
   }
   //16 july end

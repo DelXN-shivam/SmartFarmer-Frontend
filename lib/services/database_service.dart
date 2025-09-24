@@ -8,6 +8,10 @@ import '../models/verification.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import '../constants/api_constants.dart';
+
+const String BASE_URL = DatabaseUrl.BASE_URL;
+
 class DatabaseService {
   static Database? _database;
 
@@ -168,7 +172,7 @@ class DatabaseService {
   }
 
   static Future<Farmer?> fetchFarmerByIdFromApi(String farmerId) async {
-    final url = 'https://smart-farmer-backend.vercel.app/api/farmer/$farmerId';
+    final url = '${BASE_URL}/api/farmer/$farmerId';
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -193,6 +197,34 @@ class DatabaseService {
       }
     }
     return null;
+  }
+
+  static Future<bool> updateFarmerInApi(Farmer farmer) async {
+    final url = '$BASE_URL/api/farmer/update/${farmer.id}';
+    final body = jsonEncode({
+      'name': farmer.name,
+      'contact': farmer.contactNumber,
+      'aadhaarNumber': farmer.aadhaarNumber,
+      'village': farmer.village,
+      'landMark': farmer.landmark,
+      'taluka': farmer.taluka,
+      'district': farmer.district,
+      'pincode': farmer.pincode,
+    });
+    try {
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      developer.log(
+        'Error updating farmer in API: $e',
+        name: 'DatabaseService',
+      );
+      return false;
+    }
   }
 
   static Future<int> updateFarmer(Farmer farmer) async {

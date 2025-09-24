@@ -13,3 +13,13 @@ class RefreshFarmerProfile extends FarmerEvent {
   final String farmerId;
   RefreshFarmerProfile(this.farmerId);
 }
+
+class UpdateFarmerProfile extends FarmerEvent {
+  final Farmer farmer;
+  UpdateFarmerProfile(this.farmer);
+}
+
+class UpdateAllDataSources extends FarmerEvent {
+  final Farmer farmer;
+  UpdateAllDataSources(this.farmer);
+}

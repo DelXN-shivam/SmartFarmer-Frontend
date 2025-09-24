@@ -80,8 +80,15 @@ class CropDetailScreen extends StatelessWidget {
                   _buildCropHeader(),
                   const SizedBox(height: 24),
 
+                  Text(crop['rejectedReason']),
+                  const SizedBox(height: 24),
+
                   // Quick Stats Cards
                   _buildQuickStats(),
+                  const SizedBox(height: 24),
+
+                  // Rejected Reason Section
+                  _buildRejectedReasonSection(),
                   const SizedBox(height: 24),
 
                   // Main Details Section
@@ -239,8 +246,8 @@ class CropDetailScreen extends StatelessWidget {
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'Active Crop',
+                    child: Text(
+                      crop['applicationStatus'],
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -258,23 +265,37 @@ class CropDetailScreen extends StatelessWidget {
   }
 
   Widget _buildQuickStats() {
-    final area = crop is Map
-        ? (crop['area'] != null ? '${crop['area']['value'] ?? 0}' : '0')
-        : (crop.area != null ? '${crop.area.value ?? 0}' : '0');
-    final unit = crop is Map
+    // Area extraction
+    final areaValue = crop is Map
+        ? (crop['area'] != null ? '${crop['area']['value'] ?? '0'}' : '0')
+        : (crop.area != null ? '${crop.area.value ?? '0'}' : '0');
+    final areaUnit = crop is Map
         ? (crop['area'] != null ? '${crop['area']['unit'] ?? ''}' : '')
         : (crop.area != null ? '${crop.area.unit ?? ''}' : '');
-    final expectedYield = crop is Map
-        ? (crop['expectedYield']?.toString() ?? '0')
-        : (crop.expectedYield?.toString() ?? '0');
+
+    // Expected Yield extraction
+    final yieldValue = crop is Map
+        ? (crop['expectedYield'] != null
+              ? '${crop['expectedYield']['value'] ?? '0'}'
+              : '0')
+        : (crop.expectedYield != null
+              ? '${crop.expectedYield.value ?? '0'}'
+              : '0');
+    final yieldUnit = crop is Map
+        ? (crop['expectedYield'] != null
+              ? '${crop['expectedYield']['unit'] ?? ''}'
+              : '')
+        : (crop.expectedYield != null
+              ? '${crop.expectedYield.unit ?? ''}'
+              : '');
 
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
             'Area',
-            area,
-            unit,
+            areaValue,
+            areaUnit,
             Icons.landscape_outlined,
             const Color(0xFF2196F3),
           ),
@@ -283,8 +304,10 @@ class CropDetailScreen extends StatelessWidget {
         Expanded(
           child: _buildStatCard(
             'Expected Yield',
-            expectedYield,
-            'tons',
+            yieldValue,
+            yieldUnit.isNotEmpty
+                ? yieldUnit
+                : 'units', // fallback to 'units' if empty
             Icons.trending_up_outlined,
             const Color(0xFFFF9800),
           ),
@@ -346,7 +369,7 @@ class CropDetailScreen extends StatelessWidget {
                 TextSpan(
                   text: ' $unit',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: Colors.grey[600],
                   ),
@@ -428,6 +451,47 @@ class CropDetailScreen extends StatelessWidget {
             isLast: true,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRejectedReasonSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.red[300],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Rejected Reason',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              crop['rejectedReason'],
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -675,7 +739,7 @@ class CropDetailScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final imgUrl = images[index];
                   return GestureDetector(
-                    onTap: () => _showImagePopup(context, imgUrl),
+                    onTap: () => _showImageGallery(context, images, index),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
@@ -731,73 +795,97 @@ class CropDetailScreen extends StatelessWidget {
     );
   }
 
-  void _showImagePopup(BuildContext context, String imgUrl) {
+  // New: Gallery dialog with PageView
+  void _showImageGallery(
+    BuildContext context,
+    List<dynamic> images,
+    int initialIndex,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(20),
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  imgUrl,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: 300,
-                    height: 300,
-                    color: Colors.grey[100],
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.broken_image_outlined,
-                          color: Colors.grey[400],
-                          size: 48,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Failed to load image',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
+      builder: (context) {
+        PageController controller = PageController(initialPage: initialIndex);
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(20),
+          child: Stack(
+            children: [
+              Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                  onPressed: () => Navigator.of(context).pop(),
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: 320,
+                  height: 320,
+                  child: PageView.builder(
+                    controller: controller,
+                    itemCount: images.length,
+                    itemBuilder: (context, index) {
+                      final imgUrl = images[index];
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          imgUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                width: 300,
+                                height: 300,
+                                color: Colors.grey[100],
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.broken_image_outlined,
+                                      color: Colors.grey[400],
+                                      size: 48,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Failed to load image',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

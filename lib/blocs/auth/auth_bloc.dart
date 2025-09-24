@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smart_farmer/services/shared_prefs_service.dart';
 import 'dart:developer' as developer;
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -12,25 +13,33 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AppStarted>((event, emit) async {
       try {
         developer.log('AppStarted event triggered', name: 'AuthBloc');
-        final isLoggedIn = await AuthService.isLoggedIn();
+        
+        // Check if user is logged in using SharedPrefsService
+        final isLoggedIn = SharedPrefsService.isLoggedIn();
         developer.log('Is logged in: $isLoggedIn', name: 'AuthBloc');
 
         if (isLoggedIn) {
-          // Fetch userId and userData from SharedPreferences
-          final prefs = await SharedPreferences.getInstance();
-          final userId = prefs.getString('user_id');
-          final userDataString = prefs.getString('user_data');
-          // Optionally, parse userData if needed
+          // Get user data using SharedPrefsService with fallback
+          final userId = SharedPrefsService.getUserId();
+          final userRole = SharedPrefsService.getUserRole() ?? 'farmer';
+          final userData = SharedPrefsService.getUserData();
+          
           developer.log('User ID: $userId', name: 'AuthBloc');
-          developer.log('User data: $userDataString', name: 'AuthBloc');
+          developer.log('User Role: $userRole', name: 'AuthBloc');
+          developer.log('User data: $userData', name: 'AuthBloc');
 
-          if (userId != null && userDataString != null) {
-            emit(Authenticated(role: 'farmer', userId: userId));
-            developer.log('User authenticated successfully', name: 'AuthBloc');
+          if (userId != null && userId.isNotEmpty) {
+            emit(Authenticated(role: userRole, userId: userId));
+            developer.log(
+              'User authenticated successfully with role: $userRole',
+              name: 'AuthBloc',
+            );
           } else {
+            // Clear corrupted data and force re-login
+            await SharedPrefsService.clearAuthData();
             emit(Unauthenticated());
             developer.log(
-              'User data incomplete, unauthenticated',
+              'User data corrupted, cleared and unauthenticated',
               name: 'AuthBloc',
             );
           }
@@ -64,18 +73,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         developer.log('Login result: $result', name: 'AuthBloc');
 
         if (result['success']) {
-          // Save user data and token if present
-          final prefs = await SharedPreferences.getInstance();
+          // Save user data using SharedPrefsService for consistency
           if (result['userData'] != null) {
-            await prefs.setString('user_id', result['userData']['id'] ?? '');
-            await prefs.setString('user_data', json.encode(result['userData']));
+            await SharedPrefsService.saveUserData(result['userData'], event.role);
+            
             // If token is present in result, save it as well
             if (result['token'] != null) {
-              await prefs.setString('token', result['token']);
+              await SharedPrefsService.saveToken(result['token']);
             }
           }
-          final userId = prefs.getString('user_id');
-          emit(Authenticated(role: 'farmer', userId: userId ?? ''));
+          
+          final userId = SharedPrefsService.getUserId() ?? result['userData']['id'] ?? '';
+          emit(Authenticated(role: event.role, userId: userId));
         } else {
           developer.log('Login failed: ${result['message']}', name: 'AuthBloc');
           emit(AuthError(message: result['message']));

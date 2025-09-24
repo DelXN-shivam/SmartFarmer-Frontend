@@ -18,7 +18,10 @@ import '../../models/crop.dart';
 import '../../services/shared_prefs_service.dart';
 import 'dart:math';
 import '../../data/crop_data.dart';
-// Removed: import '../../constants/cloudinary_constants.dart';
+
+import '../../constants/api_constants.dart';
+
+// Removed: import '../../constants/api_constants.dart';
 
 // Cloudinary credentials from CLOUDINARY_URL
 typedef CloudinaryUploadResult = Map<String, dynamic>;
@@ -27,6 +30,8 @@ const String cloudinaryApiKey = '751899995943581';
 const String cloudinaryApiSecret = '0DV2G8tTOMG5uLr_NtGW3256BH4';
 const String cloudinaryUploadUrl =
     'https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/upload';
+
+const String BASE_URL = DatabaseUrl.BASE_URL;
 
 class CropDetailsForm extends StatefulWidget {
   final Crop? crop;
@@ -52,12 +57,17 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
   double _longitude = AppConstants.defaultLongitude;
   List<String> _imageCloudinaryUrls = [];
   List<String> _imageCloudinaryPublicIds = [];
+  List<String> _verifiedImageUrls = [];
   final ImagePicker _imagePicker = ImagePicker();
   List<String> _imageSources = [];
   final List<String> _areaUnits = ['acre', 'guntha'];
   String _selectedAreaUnit = 'acre';
+  final List<String> _yieldUnits = ['kg', 'quintal', 'ton', 'carat'];
+  String _selectedYieldUnit = 'kg';
   List<String> _filteredCrops = [];
   final FocusNode _cropNameFocusNode = FocusNode();
+  String? _applicationStatus;
+  String? _rejectedReason;
 
   // --- New loading states ---
   bool _isImageUploading = false;
@@ -84,6 +94,11 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       _longitude = widget.crop!.longitude;
       _imageCloudinaryUrls = List.from(widget.crop!.imagePaths);
       _imageCloudinaryPublicIds = List.from(widget.crop!.imagePublicIds);
+      _selectedAreaUnit = widget.crop!.areaUnit;
+      _selectedYieldUnit = widget.crop!.expectedYieldUnit;
+      _applicationStatus = widget.crop!.status;
+      // Load verified images and rejection reason from backend
+      _loadCropVerificationData();
     } else {
       _calculateExpectedHarvestDates();
     }
@@ -324,23 +339,25 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
             Expanded(child: Container()),
           ],
         ),
+        // const SizedBox(height: 16),
+        // _buildTextField(
+        //   controller: _expectedYieldController,
+        //   label: AppStrings.getString('expected_yield', langCode),
+        //   hint: 'Enter expected yield',
+        //   icon: Icons.bar_chart,
+        //   keyboardType: TextInputType.number,
+        //   validator: (value) {
+        //     if (value == null || value.isEmpty) {
+        //       return 'Please enter expected yield';
+        //     }
+        //     if (double.tryParse(value) == null) {
+        //       return 'Please enter a valid number';
+        //     }
+        //     return null;
+        //   },
+        // ),
         const SizedBox(height: 16),
-        _buildTextField(
-          controller: _expectedYieldController,
-          label: AppStrings.getString('expected_yield', langCode),
-          hint: 'Enter expected yield',
-          icon: Icons.bar_chart,
-          keyboardType: TextInputType.number,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter expected yield';
-            }
-            if (double.tryParse(value) == null) {
-              return 'Please enter a valid number';
-            }
-            return null;
-          },
-        ),
+        _buildYieldField(langCode),
         const SizedBox(height: 16),
         _buildTextAreaField(
           '${AppStrings.getString('previous_crop', langCode)} (Optional)',
@@ -352,6 +369,15 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
         _buildLocationSection(langCode),
         const SizedBox(height: 16),
         _buildImageSection(langCode),
+        if (_applicationStatus == 'verified' &&
+            _verifiedImageUrls.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildVerifiedImagesSection(langCode),
+        ],
+        if (_applicationStatus == 'rejected' && _rejectedReason != null) ...[
+          const SizedBox(height: 16),
+          _buildRejectionReasonSection(langCode),
+        ],
       ],
     );
   }
@@ -374,7 +400,10 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
             TextFormField(
               controller: _cropNameController,
               focusNode: _cropNameFocusNode,
-              onChanged: (value) {
+              enabled: _applicationStatus != 'verified',
+              onChanged: _applicationStatus == 'verified'
+                  ? null
+                  : (value) {
                 setState(() {
                   _filteredCrops = AppConstants.maharashtraCrops
                       .where(
@@ -517,6 +546,124 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
     );
   }
 
+  Widget _buildYieldField(String langCode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppStrings.getString('expected_yield', langCode),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1B5E20),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.8,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE0E0E0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2E7D32).withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextFormField(
+                  controller: _expectedYieldController,
+                  enabled: _applicationStatus != 'verified',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter expected yield';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Please enter a valid number';
+                    }
+                    return null;
+                  },
+                  decoration: const InputDecoration(
+                    hintText: 'Enter expected yield',
+                    hintStyle: TextStyle(color: Colors.grey),
+                    prefixIcon: Icon(
+                      Icons.bar_chart,
+                      color: Color(0xFF4CAF50),
+                      size: 20,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2E7D32).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedYieldUnit,
+                  dropdownColor: Colors.white,
+                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  items: _yieldUnits.map((String unit) {
+                    return DropdownMenuItem<String>(
+                      value: unit,
+                      child: Text(
+                        unit,
+                        style: const TextStyle(
+                          color: Color(0xFF1B5E20),
+                          fontSize: 18,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: _applicationStatus == 'verified'
+                      ? null
+                      : (String? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              _selectedYieldUnit = newValue;
+                            });
+                          }
+                        },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildAreaField(String langCode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,6 +696,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                 ),
                 child: TextFormField(
                   controller: _areaController,
+                  enabled: _applicationStatus != 'verified',
                   keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -581,7 +729,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -609,11 +757,16 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                       value: unit,
                       child: Text(
                         unit,
-                        style: const TextStyle(color: Color(0xFF1B5E20)),
+                        style: const TextStyle(
+                          color: Color(0xFF1B5E20),
+                          fontSize: 18,
+                        ),
                       ),
                     );
                   }).toList(),
-                  onChanged: (String? newValue) {
+                  onChanged: _applicationStatus == 'verified'
+                      ? null
+                      : (String? newValue) {
                     if (newValue != null) {
                       setState(() {
                         _selectedAreaUnit = newValue;
@@ -704,7 +857,9 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
         ),
         const SizedBox(height: 8),
         GestureDetector(
-          onTap: () async {
+          onTap: _applicationStatus == 'verified'
+              ? null
+              : () async {
             final DateTime? picked = await showDatePicker(
               context: context,
               initialDate: value,
@@ -790,6 +945,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
           ),
           child: TextField(
             controller: controller,
+            enabled: _applicationStatus != 'verified',
             maxLines: 2,
             decoration: const InputDecoration(
               border: InputBorder.none,
@@ -908,7 +1064,9 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              onPressed: _getCurrentLocation,
+              onPressed: _applicationStatus == 'verified'
+                  ? null
+                  : _getCurrentLocation,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4CAF50),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1024,129 +1182,89 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                             ),
                           ),
                         ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () async {
-                              if (index < _imageCloudinaryPublicIds.length) {
-                                final publicId =
-                                    _imageCloudinaryPublicIds[index];
-                                // Delete from Cloudinary
-                                await _deleteImageFromCloudinary(publicId);
-                                setState(() {
-                                  _imageCloudinaryUrls.removeAt(index);
-                                  _imageCloudinaryPublicIds.removeAt(index);
-                                });
-                              } else {
-                                debugPrint(
-                                  'Image index $index out of range for public IDs list',
-                                );
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                                size: 14,
+                        if (_applicationStatus != 'verified')
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () async {
+                                if (index < _imageCloudinaryPublicIds.length) {
+                                  final publicId =
+                                      _imageCloudinaryPublicIds[index];
+                                  // Delete from Cloudinary
+                                  await _deleteImageFromCloudinary(publicId);
+                                  setState(() {
+                                    _imageCloudinaryUrls.removeAt(index);
+                                    _imageCloudinaryPublicIds.removeAt(index);
+                                  });
+                                } else {
+                                  debugPrint(
+                                    'Image index $index out of range for public IDs list',
+                                  );
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   );
                 },
               ),
             ),
-          if (_imageCloudinaryUrls.length < AppConstants.maxCropImages)
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: _isImageUploading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.add_photo_alternate,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                    label: Text(
-                      'Add (${_imageCloudinaryUrls.length}/${AppConstants.maxCropImages})',
-                      style: const TextStyle(
+          if (_imageCloudinaryUrls.length < AppConstants.maxCropImages &&
+              _applicationStatus != 'verified')
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: _isImageUploading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.add_photo_alternate,
                         color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                        size: 18,
                       ),
-                    ),
-                    onPressed:
-                        (_imageCloudinaryUrls.length >=
-                                AppConstants.maxCropImages ||
-                            _isImageUploading)
-                        ? null
-                        : _pickImage,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 2,
-                    ),
+                label: Text(
+                  'Add Image (${_imageCloudinaryUrls.length}/${AppConstants.maxCropImages})',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: _isImageUploading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                    label: Text(
-                      'Capture (${_imageCloudinaryUrls.length}/${AppConstants.maxCropImages})',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    onPressed:
-                        (_imageCloudinaryUrls.length >=
-                                AppConstants.maxCropImages ||
-                            _isImageUploading)
-                        ? null
-                        : _captureImage,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 2,
-                    ),
+                onPressed:
+                    (_imageCloudinaryUrls.length >=
+                            AppConstants.maxCropImages ||
+                        _isImageUploading ||
+                        _applicationStatus == 'verified')
+                    ? null
+                    : _showImageSourceActionSheet,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
+                  elevation: 2,
                 ),
-              ],
+              ),
             ),
         ],
       ),
@@ -1154,67 +1272,99 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
   }
 
   Widget _buildActionSection(String langCode) {
+    final bool isVerified = _applicationStatus == 'verified';
+    final bool canEdit = _applicationStatus != 'verified';
+    
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isSubmitting ? null : _saveCrop,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4CAF50),
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        if (canEdit)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _saveCrop,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 3,
               ),
-              elevation: 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.send_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.crop == null
+                        ? AppStrings.getString(
+                            'Send for Verification',
+                            langCode,
+                          )
+                        : AppStrings.getString('update', langCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (isVerified)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFF4CAF50).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF4CAF50)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.send_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                const Icon(Icons.verified, color: Color(0xFF4CAF50), size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  widget.crop == null
-                      ? AppStrings.getString('Send for Verification', langCode)
-                      : AppStrings.getString('update', langCode),
+                  'Crop Verified - Editing Disabled',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: Color(0xFF4CAF50),
                   ),
                 ),
               ],
             ),
           ),
-        ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF8E1),
+            color: _getStatusBackgroundColor(),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFFE082)),
+            border: Border.all(color: _getStatusBorderColor()),
           ),
           child: Row(
             children: [
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF9800),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1224,14 +1374,13 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFFE65100),
                 ),
               ),
               Text(
-                widget.crop == null ? 'Ready to Save' : 'Ready to Update',
-                style: const TextStyle(
+                _getStatusText(),
+                style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFFE65100),
+                  color: _getStatusColor(),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1251,7 +1400,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       );
       request.files.add(await http.MultipartFile.fromPath('file', file.path));
       request.fields['upload_preset'] =
-          'smartfarming'; // Use your preset if needed
+          'SmartFarming'; // Use your preset if needed
       request.fields['api_key'] = cloudinaryApiKey;
       // For signed uploads, you would need to generate a signature, but for now, let's use unsigned
       var response = await request.send();
@@ -1265,7 +1414,14 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Cloudinary error: $respStr')));
+          ).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Cloudinary error: $respStr',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          );
         }
         return null;
       }
@@ -1298,7 +1454,12 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
           _showSuccessSnackbar('Image uploaded successfully!');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to upload image to Cloudinary.')),
+            SnackBar(
+              content: Text(
+                'Failed to upload image to Cloudinary.',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           );
         }
       }
@@ -1306,7 +1467,10 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to pick/upload image:  ${e.toString()}'),
+            content: Text(
+              'Failed to pick/upload image:  an internal error occured',
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         );
       }
@@ -1320,30 +1484,88 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
     }
   }
 
+  void _showImageSourceActionSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _captureImage();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _captureImage() async {
+    final startTime = DateTime.now();
+    debugPrint('Capture: Start at: ' + startTime.toIso8601String());
     if (_isImageUploading) return;
     setState(() {
       _isImageUploading = true;
     });
     try {
       final cameraStatus = await Permission.camera.status;
+      debugPrint(
+        'Capture: Permission checked at: ' + DateTime.now().toIso8601String(),
+      );
       if (!cameraStatus.isGranted) {
         final result = await Permission.camera.request();
+        debugPrint(
+          'Capture: Permission requested at: ' +
+              DateTime.now().toIso8601String(),
+        );
         if (!result.isGranted) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Camera permission required')),
+              const SnackBar(
+                content: Text(
+                  'Camera permission required',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             );
           }
           return;
         }
       }
       final cameras = await availableCameras();
+      debugPrint(
+        'Capture: Cameras available at: ' + DateTime.now().toIso8601String(),
+      );
       if (cameras.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('No cameras available')));
+          ).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'No cameras available',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          );
         }
         return;
       }
@@ -1357,8 +1579,16 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
           ),
         ),
       );
+      debugPrint(
+        'Capture: Returned from CameraScreen at: ' +
+            DateTime.now().toIso8601String(),
+      );
       if (imagePath != null && mounted) {
         final uploadResult = await _uploadImageToCloudinary(File(imagePath));
+        debugPrint(
+          'Capture: Uploaded to Cloudinary at: ' +
+              DateTime.now().toIso8601String(),
+        );
         if (uploadResult != null && uploadResult['secure_url'] != null) {
           setState(() {
             _imageCloudinaryUrls.add(uploadResult['secure_url']);
@@ -1367,7 +1597,12 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
           _showSuccessSnackbar('Image captured & uploaded successfully!');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to upload image to Cloudinary.')),
+            SnackBar(
+              content: Text(
+                'Failed to upload image to Cloudinary.',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           );
         }
       }
@@ -1375,7 +1610,11 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to capture/upload image: ${e.toString()}'),
+            // content: Text('Failed to capture/upload image:  [${e.toString()}', overflow: TextOverflow.ellipsis,),
+            content: Text(
+              'Failed to capture/upload image:  an internal error occured',
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         );
       }
@@ -1386,6 +1625,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
           _isImageUploading = false;
         });
       }
+      debugPrint('Capture: End at: ' + DateTime.now().toIso8601String());
     }
   }
 
@@ -1414,8 +1654,8 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
 
     final isUpdate = widget.crop != null;
     final url = isUpdate
-        ? 'https://smart-farmer-backend.vercel.app/api/crop/update/${widget.crop!.id}'
-        : 'https://smart-farmer-backend.vercel.app/api/crop/add/${widget.farmerId}';
+        ? '$BASE_URL/api/crop/update/${widget.crop!.id}'
+        : '$BASE_URL/api/crop/add/${widget.farmerId}';
 
     final method = isUpdate ? 'PATCH' : 'POST';
 
@@ -1430,7 +1670,10 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
             .toIso8601String(),
         "expectedLastHarvestDate": crop.expectedLastHarvestDate
             .toIso8601String(),
-        "expectedYield": crop.expectedYield,
+        "expectedYield": {
+          "value": crop.expectedYield,
+          "unit": _selectedYieldUnit,
+        },
         "previousCrop": crop.previousCrop,
         "latitude": crop.latitude,
         "longitude": crop.longitude,
@@ -1449,6 +1692,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
                     (isUpdate
                         ? 'Crop updated successfully'
                         : 'Crop added successfully'),
+                overflow: TextOverflow.ellipsis,
               ),
               backgroundColor: Colors.green,
             ),
@@ -1463,6 +1707,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
             SnackBar(
               content: Text(
                 'Failed to ${isUpdate ? 'update' : 'add'} crop: \\${response.body}',
+                overflow: TextOverflow.ellipsis,
               ),
               backgroundColor: Colors.red,
             ),
@@ -1476,7 +1721,10 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error submitting crop: $e'),
+            content: Text(
+              'Error submitting crop: $e',
+              overflow: TextOverflow.ellipsis,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -1495,12 +1743,14 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
         farmerId: widget.farmerId,
         cropName: _cropNameController.text.trim(),
         area: double.parse(_areaController.text),
+        areaUnit: _selectedAreaUnit,
         sowingDate: _sowingDate,
         expectedHarvestDate:
             _expectedLastHarvestDate, // for backward compatibility
         expectedFirstHarvestDate: _expectedFirstHarvestDate,
         expectedLastHarvestDate: _expectedLastHarvestDate,
         expectedYield: double.parse(_expectedYieldController.text),
+        expectedYieldUnit: _selectedYieldUnit,
         previousCrop: _previousCropController.text.trim(),
         latitude: _latitude,
         longitude: _longitude,
@@ -1542,7 +1792,10 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
               children: [
                 Icon(Icons.error, color: Colors.white, size: 20),
                 SizedBox(width: 8),
-                Text('Please fill all required fields correctly'),
+                Text(
+                  'Please fill all required fields correctly',
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
             backgroundColor: const Color(0xFFF44336),
@@ -1559,7 +1812,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
 
   Future<Map<String, dynamic>?> _fetchCropById(String cropId) async {
     try {
-      final url = 'https://smart-farmer-backend.vercel.app/api/crop/$cropId';
+      final url = '$BASE_URL/api/crop/$cropId';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
@@ -1623,7 +1876,10 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
             children: [
               Icon(Icons.check_circle, color: Colors.white, size: 20),
               SizedBox(width: 8),
-              Text('Location updated successfully!'),
+              Text(
+                'Location updated successfully!',
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
           backgroundColor: const Color(0xFF4CAF50),
@@ -1637,6 +1893,292 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
     }
   }
 
+  Widget _buildVerifiedImagesSection(String langCode) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4CAF50).withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E8),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.verified,
+                  color: Color(0xFF4CAF50),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Verified Images',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1B5E20),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 120,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _verifiedImageUrls.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  child: GestureDetector(
+                    onTap: () {
+                      showGeneralDialog(
+                        context: context,
+                        barrierDismissible: true,
+                        barrierLabel: "Image Preview",
+                        pageBuilder: (context, anim1, anim2) {
+                          return Scaffold(
+                            backgroundColor: Colors.black,
+                            body: SafeArea(
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: Center(
+                                  child: InteractiveViewer(
+                                    child: Image.network(
+                                      _verifiedImageUrls[index],
+                                      fit: BoxFit.contain,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FFFE),
+                        border: Border.all(
+                          color: const Color(0xFF4CAF50),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              _verifiedImageUrls[index],
+                              fit: BoxFit.cover,
+                              width: 120,
+                              height: 120,
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF4CAF50),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.verified,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRejectionReasonSection(String langCode) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFCDD2)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF5252).withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.cancel,
+                  color: Color(0xFFFF5252),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Rejection Reason',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFD32F2F),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8F8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFCDD2)),
+            ),
+            child: Text(
+              _rejectedReason ?? 'No reason provided',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFFD32F2F),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor() {
+    switch (_applicationStatus?.toLowerCase()) {
+      case 'verified':
+        return const Color(0xFF4CAF50);
+      case 'rejected':
+        return const Color(0xFFFF5252);
+      default:
+        return const Color(0xFFFF9800);
+    }
+  }
+
+  Color _getStatusBackgroundColor() {
+    switch (_applicationStatus?.toLowerCase()) {
+      case 'verified':
+        return const Color(0xFFE8F5E8);
+      case 'rejected':
+        return const Color(0xFFFFEBEE);
+      default:
+        return const Color(0xFFFFF8E1);
+    }
+  }
+
+  Color _getStatusBorderColor() {
+    switch (_applicationStatus?.toLowerCase()) {
+      case 'verified':
+        return const Color(0xFFC8E6C9);
+      case 'rejected':
+        return const Color(0xFFFFCDD2);
+      default:
+        return const Color(0xFFFFE082);
+    }
+  }
+
+  String _getStatusText() {
+    if (widget.crop == null) return 'Ready to Save';
+
+    switch (_applicationStatus?.toLowerCase()) {
+      case 'verified':
+        return 'Verified';
+      case 'rejected':
+        return 'Rejected - Can Edit';
+      case 'pending':
+        return 'Pending Verification';
+      default:
+        return 'Ready to Update';
+    }
+  }
+
+  Future<void> _loadCropVerificationData() async {
+    if (widget.crop?.id == null) return;
+
+    try {
+      final url = '$BASE_URL/api/crop/${widget.crop!.id}';
+      debugPrint('Loading crop verification data from: $url');
+
+      final response = await http.get(Uri.parse(url));
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final cropData = data['crop'] as Map<String, dynamic>?;
+
+        if (cropData != null && mounted) {
+          debugPrint(
+            'Crop data loaded: applicationStatus=${cropData['applicationStatus']}, verifiedImages=${cropData['verifiedImages']}, rejectedReason=${cropData['rejectedReason']}',
+          );
+
+          setState(() {
+            _applicationStatus = cropData['applicationStatus'];
+            _rejectedReason = cropData['rejectedReason'];
+            if (cropData['verifiedImages'] != null &&
+                cropData['verifiedImages'] is List) {
+              _verifiedImageUrls = List<String>.from(
+                cropData['verifiedImages'],
+              );
+            }
+          });
+        }
+      } else {
+        debugPrint(
+          'Failed to load crop data: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error loading crop verification data: $e');
+    }
+  }
+
   void _showSuccessSnackbar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1645,7 +2187,7 @@ class _CropDetailsFormState extends State<CropDetailsForm> {
             children: [
               const Icon(Icons.check_circle, color: Colors.white, size: 20),
               const SizedBox(width: 8),
-              Text(message),
+              Text(message, overflow: TextOverflow.ellipsis),
             ],
           ),
           backgroundColor: const Color(0xFF4CAF50),

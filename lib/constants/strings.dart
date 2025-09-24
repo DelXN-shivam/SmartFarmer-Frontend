@@ -204,9 +204,6 @@ class AppStrings {
       'resend_otp': 'Resend OTP',
       'back_to_mobile_number': 'Back to Mobile Number',
       'enter_otp_message': 'Enter the 6-digit OTP sent to {number}',
-      'demo_information': 'Demo Information',
-      'demo_information_message':
-          'For demo purposes, you can use any 10-digit mobile number. The OTP will be "123456" for verification.',
       // General
       'mobile_number': 'Mobile Number',
       'security': 'Security',
@@ -714,9 +711,6 @@ class AppStrings {
       'resend_otp': 'ओटीपी पुनः भेजें',
       'back_to_mobile_number': 'मोबाइल नंबर पर वापस जाएं',
       'enter_otp_message': '{number} पर भेजा गया 6-अंकों का ओटीपी दर्ज करें',
-      'demo_information': 'डेमो जानकारी',
-      'demo_information_message':
-          'डेमो के लिए, आप कोई भी 10-अंकों का मोबाइल नंबर उपयोग कर सकते हैं। सत्यापन के लिए ओटीपी "123456" होगा।',
       // General
       'mobile_number': 'मोबाइल नंबर',
       'security': 'सुरक्षा',
@@ -1223,9 +1217,6 @@ class AppStrings {
       'resend_otp': 'ओटीपी पुन्हा पाठवा',
       'back_to_mobile_number': 'मोबाइल नंबरवर परत जा',
       'enter_otp_message': '{number} वर पाठवलेला 6-अंकी ओटीपी प्रविष्ट करा',
-      'demo_information': 'डेमो माहिती',
-      'demo_information_message':
-          'डेमो साठी, आपण कोणताही 10-अंकी मोबाइल नंबर वापरू शकता. सत्यापनासाठी ओटीपी "123456" असेल.',
       // General
       'mobile_number': 'मोबाईल नंबर',
       'security': 'सुरक्षा',

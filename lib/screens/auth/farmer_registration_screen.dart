@@ -11,8 +11,8 @@ import '../../models/farmer.dart';
 import '../../services/database_service.dart';
 
 class FarmerRegistrationScreen extends StatefulWidget {
-  final String? initialContact;
-  const FarmerRegistrationScreen({Key? key, this.initialContact})
+  final String initialContact;
+  const FarmerRegistrationScreen({Key? key, required this.initialContact})
     : super(key: key);
 
   @override
@@ -846,7 +846,8 @@ class _FarmerRegistrationScreenState extends State<FarmerRegistrationScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Registration failed: ${e.toString()}'),
+          // content: Text('Registration failed: ${e.toString()}'),
+          content: Text('Registration failed: an internal error occured'),
           backgroundColor: AppTheme.errorColor,
         ),
       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smart_farmer/screens/auth/otp_verification_screen.dart';
 import 'package:smart_farmer/screens/common/about_screen.dart';
 import 'package:smart_farmer/screens/common/hepl_support_screen.dart';
 import 'package:smart_farmer/screens/common/notifications_screen.dart';
@@ -21,6 +22,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import 'package:smart_farmer/screens/common/profile_view_screen.dart';
+import '../../models/farmer.dart';
+import '../../constants/api_constants.dart';
+
+const String BASE_URL = DatabaseUrl.BASE_URL;
 
 class FarmerDashboardScreen extends StatefulWidget {
   const FarmerDashboardScreen({super.key});
@@ -57,9 +62,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
       _cropsError = null;
     });
     try {
-      final url = Uri.parse(
-        'https://smart-farmer-backend.vercel.app/api/crop/by-farmer/$farmerId',
-      );
+      final url = Uri.parse('$BASE_URL/api/crop/by-farmer/$farmerId');
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -104,8 +107,10 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     if (userDataString != null) {
       setState(() {
         _profileData = json.decode(userDataString) as Map<String, dynamic>;
-        developer.log("$_profileData");
+        developer.log("Profile data loaded: $_profileData");
       });
+    } else {
+      developer.log('No profile data found in SharedPreferences');
     }
   }
 
@@ -154,6 +159,56 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         'No valid userId found. Farmer data will not be loaded.',
         name: 'FarmerDashboardScreen',
       );
+    }
+  }
+
+  Future<void> _refreshProfileData() async {
+    final userId = SharedPrefsService.getUserId();
+    if (userId != null && userId.isNotEmpty) {
+      try {
+        // Fetch fresh data from API
+        final response = await http.get(
+          Uri.parse('$BASE_URL/api/farmer/$userId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          final newFarmerData = responseData['farmer'];
+
+          // Update all storage systems
+          await _updateAllDataSources(newFarmerData);
+
+          // Update local profile data
+          setState(() {
+            _profileData = newFarmerData;
+          });
+
+          developer.log('Profile data refreshed successfully');
+        } else {
+          developer.log(
+            'Failed to refresh profile data: ${response.statusCode}',
+          );
+        }
+      } catch (e) {
+        developer.log('Error refreshing profile data: $e');
+      }
+    }
+  }
+
+  Future<void> _updateAllDataSources(Map<String, dynamic> newData) async {
+    try {
+      // 1. Update SharedPreferences
+      await SharedPrefsService.saveFarmerData(newData);
+
+      // 2. Trigger BLoC state update for app-wide consistency
+      if (mounted) {
+        context.read<FarmerBloc>().add(
+          RefreshFarmerProfile(newData['_id'] ?? newData['id'] ?? ''),
+        );
+      }
+    } catch (e) {
+      developer.log('Failed to update data sources: $e');
     }
   }
 
@@ -330,7 +385,6 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
   }
 
   Widget _buildHomeTab() {
-    print('_profileData in _buildHomeTab: $_profileData');
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
 
     return SafeArea(
@@ -338,45 +392,76 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         opacity: _fadeAnimation,
         child: Transform.translate(
           offset: Offset(0, _slideAnimation.value),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(
-              top: 20,
-              left: 20,
-              right: 20,
-              bottom: 20,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_profileData != null) _buildGlassWelcomeCardFromProfile(),
-                const SizedBox(height: 32),
-                _buildSectionHeader('Quick Actions', Icons.flash_on_rounded),
-                const SizedBox(height: 16),
-                _buildModernQuickActions(),
-                const SizedBox(height: 32),
-                _buildWeatherCard(),
-                const SizedBox(height: 32),
-                _buildSectionHeader('AI Insights', Icons.psychology_rounded),
-                const SizedBox(height: 16),
-                _buildAIInsights(),
-                const SizedBox(height: 32),
-                _buildSectionHeader('Recent Crops', Icons.grass_rounded),
-                const SizedBox(height: 16),
-                _buildRecentCrops(),
-                const SizedBox(height: 100),
-              ],
-            ),
+          child: BlocBuilder<FarmerBloc, FarmerState>(
+            builder: (context, state) {
+              // Get the most current farmer data
+              Farmer? currentFarmer;
+              if (state is SingleFarmerLoaded) {
+                currentFarmer = state.farmer;
+              } else if (state is FarmerLoaded && state.farmers.isNotEmpty) {
+                currentFarmer = state.farmers.first;
+              }
+
+              // Merge data sources - BLoC state takes priority over cached data
+              final displayName =
+                  currentFarmer?.name ?? _profileData?['name'] ?? '';
+              final displayVillage =
+                  currentFarmer?.village ?? _profileData?['village'] ?? '';
+              final displayDistrict =
+                  currentFarmer?.district ?? _profileData?['district'] ?? '';
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.only(
+                  top: 20,
+                  left: 20,
+                  right: 20,
+                  bottom: 20,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildGlassWelcomeCard(
+                      displayName: displayName,
+                      displayVillage: displayVillage,
+                      displayDistrict: displayDistrict,
+                    ),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader(
+                      'Quick Actions',
+                      Icons.flash_on_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModernQuickActions(),
+                    const SizedBox(height: 32),
+                    _buildWeatherCard(),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader(
+                      'AI Insights',
+                      Icons.psychology_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildAIInsights(),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader('Recent Crops', Icons.grass_rounded),
+                    const SizedBox(height: 16),
+                    _buildRecentCrops(),
+                    const SizedBox(height: 100),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildGlassWelcomeCardFromProfile() {
-    final displayName = _profileData!['name'] ?? '';
-    final displayVillage = _profileData!['village'] ?? '';
-    final displayDistrict = _profileData!['district'] ?? '';
-
+  // Updated welcome card to use parameters
+  Widget _buildGlassWelcomeCard({
+    required String displayName,
+    required String displayVillage,
+    required String displayDistrict,
+  }) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
@@ -744,29 +829,34 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     return SafeArea(
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              //  Profile Header
-              _buildProfileHeader(),
-              const SizedBox(height: 32),
+        child: RefreshIndicator(
+          onRefresh: _refreshProfileData,
+          color: const Color(0xFF4CAF50),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                //  Profile Header
+                _buildProfileHeader(),
+                const SizedBox(height: 32),
 
-              // Stats Cards
-              _buildStatsCards(),
-              const SizedBox(height: 32),
+                // Stats Cards
+                _buildStatsCards(),
+                const SizedBox(height: 32),
 
-              // Settings Section
-              _buildSectionHeader('Settings', Icons.settings_rounded),
-              const SizedBox(height: 16),
-              _buildSettingsList(),
-              const SizedBox(height: 32),
+                // Settings Section
+                _buildSectionHeader('Settings', Icons.settings_rounded),
+                const SizedBox(height: 16),
+                _buildSettingsList(),
+                const SizedBox(height: 32),
 
-              // Logout Button
-              _buildLogoutButton(),
-              const SizedBox(height: 10),
-            ],
+                // Logout Button
+                _buildLogoutButton(),
+                const SizedBox(height: 10),
+              ],
+            ),
           ),
         ),
       ),
@@ -778,12 +868,19 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
       builder: (context, state) {
         String displayName = '';
         String displayAadhaar = '';
-        if (_profileData != null) {
-          displayName = _profileData!['name'] ?? '';
-          displayAadhaar = _profileData!['aadhaarNumber'] ?? '';
-        } else if (state is SingleFarmerLoaded) {
+
+        // Priority: BLoC state first, then local storage
+        if (state is SingleFarmerLoaded) {
           displayName = state.farmer.name;
           displayAadhaar = state.farmer.aadhaarNumber;
+        } else if (_profileData != null) {
+          displayName = _profileData!['name'] ?? '';
+          // Check multiple possible field names for aadhaar
+          displayAadhaar =
+              _profileData!['aadhaarNumber'] ??
+              _profileData!['aadhaar_number'] ??
+              _profileData!['aadharNumber'] ??
+              '';
         }
         return Container(
           decoration: BoxDecoration(
@@ -820,7 +917,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                     child: Text(
                       displayName.isNotEmpty
                           ? displayName.substring(0, 2).toUpperCase()
-                          : '',
+                          : 'Loading...',
                       style: const TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
@@ -858,15 +955,14 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                   ),
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
@@ -881,6 +977,12 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                                   builder: (context) => ProfileViewScreen(
                                     userId: userId,
                                     userRole: userRole,
+                                    onBack: () {
+                                      // Switch to profile tab when back from ProfileViewScreen
+                                      setState(() {
+                                        _selectedIndex = 2;
+                                      });
+                                    },
                                   ),
                                 ),
                               );
@@ -911,40 +1013,50 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _navigateToProfileForm(),
-                            borderRadius: BorderRadius.circular(16),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.edit_rounded,
-                                    color: Color(0xFF2E7D32),
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Edit',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF2E7D32),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    // const SizedBox(width: 12),
+                    // Expanded(
+                    //   child: Container(
+                    //     decoration: BoxDecoration(
+                    //       color: Colors.white.withOpacity(0.2),
+                    //       borderRadius: BorderRadius.circular(16),
+                    //       border: Border.all(
+                    //         color: Colors.white.withOpacity(0.3),
+                    //         width: 1,
+                    //       ),
+                    //     ),
+                    //     child: Material(
+                    //       color: Colors.transparent,
+                    //       child: InkWell(
+                    //         onTap: _navigateToProfileForm,
+                    //         borderRadius: BorderRadius.circular(16),
+                    //         child: const Padding(
+                    //           padding: EdgeInsets.symmetric(vertical: 16),
+                    //           child: Row(
+                    //             mainAxisAlignment: MainAxisAlignment.center,
+                    //             children: [
+                    //               Icon(
+                    //                 Icons.edit_outlined,
+                    //                 color: Colors.white,
+                    //                 size: 20,
+                    //               ),
+                    //               SizedBox(width: 8),
+                    //               Text(
+                    //                 'Edit',
+                    //                 style: TextStyle(
+                    //                   fontSize: 16,
+                    //                   color: Colors.white,
+                    //                   fontWeight: FontWeight.w600,
+                    //                 ),
+                    //               ),
+                    //             ],
+                    //           ),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+                  ],
                 ),
               ],
             ),
@@ -1911,13 +2023,35 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
 
   void _navigateToProfileForm() {
     final state = context.read<FarmerBloc>().state;
-    if (state is FarmerLoaded && state.farmers.isNotEmpty) {
+
+    // Try to get farmer from BLoC state first
+    if (state is SingleFarmerLoaded) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => FarmerDetailsForm(farmer: state.farmer),
+        ),
+      );
+    } else if (state is FarmerLoaded && state.farmers.isNotEmpty) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => FarmerDetailsForm(farmer: state.farmers.first),
         ),
       );
+    } else if (_profileData != null) {
+      // Convert profile data to Farmer object if BLoC data is not available
+      final farmer = _createFarmerFromProfileData();
+      if (farmer != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FarmerDetailsForm(farmer: farmer),
+          ),
+        );
+      } else {
+        _showProfileDataError();
+      }
     } else if (state is FarmerLoading) {
       // Show loading indicator while waiting for data
       showDialog(
@@ -1930,6 +2064,7 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
         const SnackBar(
           content: Text(
             'Farmer data is not loaded yet. Please try again later.',
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       );
@@ -1994,6 +2129,66 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
     );
   }
 
+  // Helper method to create Farmer object from profile data
+  Farmer? _createFarmerFromProfileData() {
+    if (_profileData == null) return null;
+
+    try {
+      return Farmer(
+        id: _profileData!['_id'] ?? _profileData!['id'] ?? '',
+        name: _profileData!['name'] ?? '',
+        contactNumber:
+            _profileData!['contactNumber'] ??
+            _profileData!['contact_number'] ??
+            '',
+        aadhaarNumber:
+            _profileData!['aadhaarNumber'] ??
+            _profileData!['aadhaar_number'] ??
+            _profileData!['aadharNumber'] ??
+            '',
+        village: _profileData!['village'] ?? '',
+        landmark: _profileData!['landmark'] ?? '',
+        taluka: _profileData!['taluka'] ?? '',
+        district: _profileData!['district'] ?? '',
+        pincode: _profileData!['pincode'] ?? '',
+        createdAt: _parseDateTime(
+          _profileData!['createdAt'] ?? _profileData!['created_at'],
+        ),
+        updatedAt: _parseDateTime(
+          _profileData!['updatedAt'] ?? _profileData!['updated_at'],
+        ),
+      );
+    } catch (e) {
+      developer.log('Error creating farmer from profile data: $e');
+      return null;
+    }
+  }
+
+  DateTime _parseDateTime(dynamic dateValue) {
+    if (dateValue == null) return DateTime.now();
+    if (dateValue is DateTime) return dateValue;
+    if (dateValue is String) {
+      try {
+        return DateTime.parse(dateValue);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+    return DateTime.now();
+  }
+
+  void _showProfileDataError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Unable to load profile data for editing. Please try refreshing.',
+          overflow: TextOverflow.ellipsis,
+        ),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
   void _handleLogout() {
     showDialog(
       context: context,
@@ -2022,7 +2217,12 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
             onPressed: () {
               Navigator.pop(context);
               SharedPrefsService.clearAll();
-              // Add navigation to login screen here
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => const MobileOTPScreen(),
+                ),
+                (route) => false,
+              );
             },
             child: const Text(
               'Logout',

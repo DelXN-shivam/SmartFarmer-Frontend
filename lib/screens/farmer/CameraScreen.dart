@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert'; // Added for json.decode
 // ignore: depend_on_referenced_packages
 import 'package:camera_platform_interface/src/types/camera_description.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Added for SharedPreferences
 
 class CameraScreen extends StatefulWidget {
   final double latitude;
@@ -31,13 +33,26 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isCapturing = false;
   Position? _currentPosition;
   String _currentAddress = '';
+  String _currentUserName = '';
   StreamSubscription<Position>? _positionStreamSubscription;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
+    _fetchCurrentUserName();
     _initializeCamera();
+  }
+
+  Future<void> _fetchCurrentUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    if (userDataString != null) {
+      final userData = json.decode(userDataString);
+      setState(() {
+        _currentUserName = userData['name'] ?? '';
+      });
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -120,10 +135,13 @@ class _CameraScreenState extends State<CameraScreen> {
     final font = img.arial48;
     final formattedAddress = _formatAddressWithSublocality(info['address']!);
     final addressLines = _splitAddress(formattedAddress);
+    // Add user name to overlay
+    final userName = info['userName'] ?? '';
     var maxWidth =
+        _measureText(image, '👤 $userName', font) +
         _measureText(image, '📍 Coordinates: ${info['coordinates']}', font) +
         padding * 2;
-    final totalHeight = padding * 2 + (2 + addressLines.length) * lineSpacing;
+    final totalHeight = padding * 2 + (3 + addressLines.length) * lineSpacing;
     final yStart = image.height - totalHeight - padding;
     img.fillRect(
       image,
@@ -146,13 +164,23 @@ class _CameraScreenState extends State<CameraScreen> {
       thickness: 1,
     );
 
+    // Draw user name
+    img.drawString(
+      image,
+      '👤 $userName',
+      font: font,
+      x: padding * 2,
+      y: yStart + padding,
+      color: textColor,
+    );
+
     // Draw coordinates
     img.drawString(
       image,
       '📍 Coordinates: ${info['coordinates']}',
       font: font,
       x: padding * 2,
-      y: yStart + padding,
+      y: yStart + padding + lineSpacing,
       color: textColor,
     );
 
@@ -162,7 +190,7 @@ class _CameraScreenState extends State<CameraScreen> {
       '🕒 Time: ${info['timestamp']}',
       font: font,
       x: padding * 2,
-      y: yStart + padding + lineSpacing,
+      y: yStart + padding + 2 * lineSpacing,
       color: textColor,
     );
 
@@ -173,7 +201,7 @@ class _CameraScreenState extends State<CameraScreen> {
         addressLines[i],
         font: font,
         x: padding * 2,
-        y: yStart + padding + (2 + i) * lineSpacing,
+        y: yStart + padding + (3 + i) * lineSpacing,
         color: textColor,
       );
     }
@@ -222,6 +250,7 @@ class _CameraScreenState extends State<CameraScreen> {
       final image = img.decodeImage(bytes)!;
 
       _drawOverlays(image, {
+        'userName': _currentUserName,
         'coordinates':
             '${_currentPosition?.latitude.toStringAsFixed(6) ?? widget.latitude}, '
             '${_currentPosition?.longitude.toStringAsFixed(6) ?? widget.longitude}',
@@ -261,7 +290,7 @@ class _CameraScreenState extends State<CameraScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+        ).showSnackBar(SnackBar(content: Text('Error: an internal error occured', overflow: TextOverflow.ellipsis,)));
       }
     } finally {
       setState(() => _isCapturing = false);

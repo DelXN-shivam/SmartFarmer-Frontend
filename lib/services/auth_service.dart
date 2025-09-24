@@ -1,10 +1,15 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_farmer/services/shared_prefs_service.dart';
 import '../constants/app_constants.dart';
 import '../models/farmer.dart';
 import 'database_service.dart';
 import 'package:http/http.dart' as http;
+
+import '../constants/api_constants.dart';
+
+const String BASE_URL = DatabaseUrl.BASE_URL;
 
 class AuthService {
   static const String _keyIsLoggedIn = 'is_logged_in';
@@ -306,7 +311,7 @@ class AuthService {
     required double longitude,
   }) async {
     final url = Uri.parse(
-      'https://smart-farmer-backend.vercel.app/api/farmer/register/contact',
+      '$BASE_URL/api/farmer/register/contact',
     );
     final body = jsonEncode({
       "contact": contact,
@@ -345,12 +350,8 @@ class AuthService {
     try {
       developer.log('AuthService.logout called', name: 'AuthService');
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_keyIsLoggedIn);
-      await prefs.remove(_keyUserId);
-      await prefs.remove(_keyUserData);
-      await prefs.remove(_keyUserEmail);
-      await prefs.remove('token'); // Clear token
+      // Use SharedPrefsService for consistent data clearing
+      await SharedPrefsService.clearAuthData();
 
       developer.log(
         'Logout successful - all login data cleared from SharedPreferences',
@@ -373,6 +374,91 @@ class AuthService {
     } catch (e) {
       developer.log('isLoggedIn error: $e', name: 'AuthService');
       return false;
+    }
+  }
+
+  // Common login API call
+  static Future<Map<String, dynamic>> loginWithContact(String contact) async {
+    try {
+      developer.log('AuthService.loginWithContact called', name: 'AuthService');
+      final url = Uri.parse(
+        '$BASE_URL/api/auth/mobile-user/loginByContact?contact=$contact',
+      );
+      final response = await http.post(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': 'Login failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  // Save user data based on role
+  static Future<void> saveUserData(Map<String, dynamic> loginData) async {
+    try {
+      developer.log('Saving user data: $loginData', name: 'AuthService');
+
+      final role = loginData['role'];
+      final userData = loginData['data'];
+      final token = loginData['token'];
+
+      // Use SharedPrefsService for consistent data storage
+      await SharedPrefsService.saveUserData(userData, role);
+      if (token != null) {
+        await SharedPrefsService.saveToken(token);
+      }
+
+      // Save role-specific data to local database if farmer
+      if (role == 'farmer') {
+        await _saveFarmerToDatabase(userData);
+      }
+
+      developer.log('User data saved successfully', name: 'AuthService');
+    } catch (e) {
+      developer.log('Error saving user data: $e', name: 'AuthService');
+      rethrow;
+    }
+  }
+
+  // Save farmer data to local database
+  static Future<void> _saveFarmerToDatabase(
+    Map<String, dynamic> farmerData,
+  ) async {
+    try {
+      final farmer = Farmer(
+        id: farmerData['_id'] ?? '',
+        name: farmerData['name'] ?? '',
+        contactNumber: farmerData['contact'] ?? '',
+        aadhaarNumber: farmerData['aadhaarNumber'] ?? '',
+        village: farmerData['village'] ?? '',
+        landmark: farmerData['landMark'] ?? '',
+        taluka: farmerData['taluka'] ?? '',
+        district: farmerData['district'] ?? '',
+        pincode: farmerData['pincode'] ?? '',
+        createdAt:
+            DateTime.tryParse(farmerData['createdAt'] ?? '') ?? DateTime.now(),
+        updatedAt:
+            DateTime.tryParse(farmerData['updatedAt'] ?? '') ?? DateTime.now(),
+      );
+
+      await DatabaseService.insertFarmer(farmer);
+      developer.log('Farmer data saved to local database', name: 'AuthService');
+    } catch (e) {
+      developer.log('Error saving farmer to database: $e', name: 'AuthService');
+    }
+  }
+
+  // Get user role
+  static Future<String?> getUserRole() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyUserRole);
+    } catch (e) {
+      return null;
     }
   }
 

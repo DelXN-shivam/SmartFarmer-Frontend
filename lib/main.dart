@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:smart_farmer/screens/auth/otp_verification_screen.dart';
+import 'utils/release_debug_helper.dart';
 
 import 'constants/app_constants.dart';
 import 'constants/strings.dart';
@@ -12,6 +14,7 @@ import 'blocs/crop/crop_bloc.dart';
 import 'blocs/verification/verification_bloc.dart';
 import 'blocs/filter/filter_bloc.dart';
 import 'screens/farmer/farmer_dashboard_screen.dart';
+import 'screens/verifier/verifier_dashboard_screen.dart';
 import 'services/shared_prefs_service.dart';
 import 'services/database_init_service.dart';
 import 'blocs/auth/auth_event.dart';
@@ -20,8 +23,19 @@ import 'screens/common/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SharedPrefsService.init();
-  await DatabaseInitService.initializeSampleData();
+  
+  // Ensure SharedPreferences is properly initialized
+  // try {
+  //   await SharedPrefsService.init();
+  //   // Test SharedPrefs in release mode
+  //   if (kReleaseMode) {
+  //     await ReleaseDebugHelper.testSharedPrefs();
+  //   }
+  // } catch (e) {
+  //   print('SharedPrefs init failed: $e');
+  //   // Continue anyway, will be handled in individual calls
+  // }
+  
   runApp(const SmartFarmerApp());
 }
 
@@ -79,11 +93,17 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
         MaterialPageRoute(
           builder: (context) {
             if (widget.authState is Authenticated) {
-              return const FarmerDashboardScreen();
-              // return const CropDetailsForm(crop: null, farmerId: "");
+              final authState = widget.authState as Authenticated;
+              switch (authState.role) {
+                case 'farmer':
+                  return const FarmerDashboardScreen();
+                case 'verifier':
+                  return const VerifierDashboardScreen();
+                default:
+                  return const FarmerDashboardScreen();
+              }
             }
             return const MobileOTPScreen();
-            // return const CropDetailsForm(crop: null, farmerId: "");
           },
         ),
       );
