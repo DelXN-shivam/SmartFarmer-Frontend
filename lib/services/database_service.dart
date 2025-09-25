@@ -36,7 +36,15 @@ class DatabaseService {
             "ALTER TABLE crops ADD COLUMN expected_last_harvest_date TEXT",
           );
           await db.execute(
-            "ALTER TABLE crops ADD COLUMN image_public_ids TEXT",
+            "ALTER TABLE crops ADD COLUMN image_public_ids TEXT DEFAULT '[]'",
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            "ALTER TABLE crops ADD COLUMN area_unit TEXT DEFAULT 'acre'",
+          );
+          await db.execute(
+            "ALTER TABLE crops ADD COLUMN expected_yield_unit TEXT DEFAULT 'kg'",
           );
         }
       },
@@ -68,13 +76,18 @@ class DatabaseService {
         farmer_id TEXT NOT NULL,
         crop_name TEXT NOT NULL,
         area REAL NOT NULL,
+        area_unit TEXT DEFAULT 'acre',
         sowing_date TEXT NOT NULL,
         expected_harvest_date TEXT NOT NULL,
+        expected_first_harvest_date TEXT,
+        expected_last_harvest_date TEXT,
         expected_yield REAL NOT NULL,
+        expected_yield_unit TEXT DEFAULT 'kg',
         previous_crop TEXT NOT NULL,
         latitude REAL NOT NULL,
         longitude REAL NOT NULL,
         image_paths TEXT NOT NULL,
+        image_public_ids TEXT DEFAULT '[]',
         status TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,

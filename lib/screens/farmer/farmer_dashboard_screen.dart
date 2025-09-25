@@ -24,6 +24,7 @@ import 'package:http/http.dart' as http;
 import 'package:smart_farmer/screens/common/profile_view_screen.dart';
 import '../../models/farmer.dart';
 import '../../constants/api_constants.dart';
+import '../../utils/data_debug_helper.dart';
 
 const String BASE_URL = DatabaseUrl.BASE_URL;
 
@@ -87,30 +88,75 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _loadProfileData();
-      await _loadFarmerData();
-      await _fetchCropsFromApi();
-      setState(() {}); // Force rebuild after both are loaded
-    });
     _setupAnimations();
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text;
       });
     });
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    try {
+      // Debug data sources in development
+      await DataDebugHelper.debugAllDataSources();
+      
+      await _loadProfileData();
+      await _loadFarmerData();
+      await _fetchCropsFromApi();
+      
+      // Validate data consistency
+      await DataDebugHelper.validateDataConsistency();
+      
+      if (mounted) {
+        setState(() {}); // Force rebuild after all data is loaded
+      }
+    } catch (e) {
+      developer.log('Error initializing data: $e');
+      if (mounted) {
+        setState(() {
+          _cropsError = 'Failed to load data: $e';
+        });
+      }
+    }
   }
 
   Future<void> _loadProfileData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    if (userDataString != null) {
-      setState(() {
-        _profileData = json.decode(userDataString) as Map<String, dynamic>;
-        developer.log("Profile data loaded: $_profileData");
-      });
-    } else {
-      developer.log('No profile data found in SharedPreferences');
+    try {
+      // Try SharedPrefsService first
+      final userData = SharedPrefsService.getUserData();
+      if (userData != null) {
+        if (mounted) {
+          setState(() {
+            _profileData = userData;
+          });
+        }
+        developer.log("Profile data loaded from SharedPrefsService: $userData");
+        return;
+      }
+
+      // Fallback to direct SharedPreferences access
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString != null && userDataString.isNotEmpty) {
+        final decodedData = json.decode(userDataString) as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            _profileData = decodedData;
+          });
+        }
+        developer.log("Profile data loaded from direct prefs: $decodedData");
+      } else {
+        developer.log('No profile data found in SharedPreferences');
+        // Try to refresh from API if user ID exists
+        final userId = SharedPrefsService.getUserId();
+        if (userId != null && userId.isNotEmpty) {
+          await _refreshProfileData();
+        }
+      }
+    } catch (e) {
+      developer.log('Error loading profile data: $e');
     }
   }
 
@@ -142,17 +188,17 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
   }
 
   Future<void> _loadFarmerData() async {
-    final userId = SharedPrefsService.getUserId();
+    final userId = await SharedPrefsService.getUserIdAsync();
     developer.log(
       'Fetched userId from SharedPrefsService: $userId',
       name: 'FarmerDashboardScreen',
     );
     if (userId != null && userId.isNotEmpty) {
       developer.log(
-        'Dispatching LoadFarmerById with userId: $userId',
+        'Dispatching LoadFarmerProfile with userId: $userId',
         name: 'FarmerDashboardScreen',
       );
-      context.read<FarmerBloc>().add(LoadFarmerById(userId));
+      context.read<FarmerBloc>().add(LoadFarmerProfile(userId));
       context.read<CropBloc>().add(LoadCropsByFarmer(userId));
     } else {
       developer.log(
@@ -2237,15 +2283,28 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final langCode = SharedPrefsService.getLanguage() ?? 'en';
-    return BlocBuilder<FarmerBloc, FarmerState>(
-      builder: (context, state) {
-        String name = '';
-        String initials = '';
+    return BlocListener<FarmerBloc, FarmerState>(
+      listener: (context, state) {
         if (state is SingleFarmerLoaded) {
-          name = state.farmer.name;
-          initials = name.isNotEmpty ? name.substring(0, 2).toUpperCase() : '';
+          // Update profile data when farmer is loaded from BLoC
+          if (mounted) {
+            setState(() {
+              _profileData = state.farmer.toMap();
+            });
+          }
+        } else if (state is FarmerError) {
+          developer.log('Farmer BLoC error: ${state.message}');
         }
-        return Scaffold(
+      },
+      child: BlocBuilder<FarmerBloc, FarmerState>(
+        builder: (context, state) {
+          String name = '';
+          String initials = '';
+          if (state is SingleFarmerLoaded) {
+            name = state.farmer.name;
+            initials = name.isNotEmpty ? name.substring(0, 2).toUpperCase() : '';
+          }
+          return Scaffold(
           backgroundColor: const Color(0xFFF8FFFE),
           extendBodyBehindAppBar: true,
           appBar: _buildModernAppBar(name: name, initials: initials),
@@ -2297,7 +2356,8 @@ class _FarmerDashboardScreenState extends State<FarmerDashboardScreen>
                 )
               : null,
         );
-      },
+        },
+      ),
     );
   }
 }

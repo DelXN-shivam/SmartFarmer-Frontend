@@ -117,8 +117,8 @@ class _BackendDebugWidgetState extends State<BackendDebugWidget> {
           // Test PATCH
           final testData = {
             "applicationStatus": "verified",
-            "verifiedImages": ["https://test-url.com/image.jpg"],
-            "rejectedReason": "Test reason"
+            "verifiedImages": ["https://sample-url.com/image.jpg"],
+            "rejectedReason": "Sample reason"
           };
           
           final patchResponse = await http.patch(
@@ -168,7 +168,7 @@ class _BackendDebugWidgetState extends State<BackendDebugWidget> {
           "https://res.cloudinary.com/dijjftmm8/image/upload/v1234567890/test2.jpg"
         ],
         "verifiedTime": DateTime.now().toIso8601String(),
-        "verifierId": "test_verifier_123"
+        "verifierId": "sample_verifier_123"
       };
 
       output += 'Sending data:\n${jsonEncode(verificationData)}\n\n';
@@ -218,7 +218,7 @@ class _BackendDebugWidgetState extends State<BackendDebugWidget> {
       output += '\n--- TESTING REJECTION ---\n';
       final rejectionData = {
         "applicationStatus": "rejected",
-        "rejectedReason": "Test rejection - quality issues detected"
+        "rejectedReason": "Sample rejection - quality issues detected"
       };
 
       final rejectResponse = await http.patch(

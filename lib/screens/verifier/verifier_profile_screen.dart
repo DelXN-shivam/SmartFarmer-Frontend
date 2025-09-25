@@ -23,12 +23,16 @@ class _VerifierProfileScreenState extends State<VerifierProfileScreen> {
   }
 
   Future<void> _loadVerifierData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    if (userDataString != null) {
-      setState(() {
-        verifierData = json.decode(userDataString);
-      });
+    try {
+      await SharedPrefsService.init();
+      final userData = SharedPrefsService.getUserData();
+      if (userData != null) {
+        setState(() {
+          verifierData = Map<String, dynamic>.from(userData);
+        });
+      }
+    } catch (e) {
+      print('Error loading verifier data: $e');
     }
   }
 

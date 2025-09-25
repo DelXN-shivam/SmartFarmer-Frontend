@@ -6,10 +6,12 @@ class AppConstants {
 
   // User Roles
   static const String roleFarmer = 'farmer';
+  static const String roleVerifier = 'verifier';
+  static const String roleAdmin = 'admin';
 
   // Database
   static const String databaseName = 'smart_farmer.db';
-  static const int databaseVersion = 2;
+  static const int databaseVersion = 3;
 
   // SharedPreferences Keys
   static const String keyLanguage = 'language';
@@ -33,7 +35,7 @@ class AppConstants {
 
   // Address models
   static const String stateMaharashtra = 'Maharashtra';
-  static const Map<String, List<String>> maharashtraDistricts = {
+static const Map<String, List<String>> maharashtraDistricts = {
     'Ahmednagar': [
       'Ahmednagar',
       'Shrirampur',

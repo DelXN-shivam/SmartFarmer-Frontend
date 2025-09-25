@@ -51,38 +51,33 @@ class AuthService {
       bool isValid = false;
       Map<String, dynamic> userData = {};
 
-      switch (role) {
-        case AppConstants.roleFarmer:
-          developer.log('Checking farmer credentials...', name: 'AuthService');
-          // For farmers, check in database
-          final farmer = await DatabaseService.getFarmerById(mobileNumber);
+      if (role == AppConstants.roleFarmer) {
+        developer.log('Checking farmer credentials...', name: 'AuthService');
+        // For farmers, check in database
+        final farmer = await DatabaseService.getFarmerById(mobileNumber);
 
-          if (farmer != null) {
-            developer.log(
-              'Farmer found: ${farmer.name} (ID: ${farmer.id})',
-              name: 'AuthService',
-            );
-            // For demo purposes, accept any OTP for existing farmers
-            // In real app, you'd check against hashed OTP in database
-            isValid = true;
-            userData = {
-              'id': farmer.id,
-              'name': farmer.name,
-              'mobile_number': farmer.contactNumber,
-              'role': role,
-              'village': farmer.village,
-              'district': farmer.district,
-            };
-            developer.log('Farmer login successful', name: 'AuthService');
-          } else {
-            developer.log(
-              'No farmer found with mobile number: $mobileNumber',
-              name: 'AuthService',
-            );
-          }
-          break;
-        default:
-          break;
+        if (farmer != null) {
+          developer.log(
+            'Farmer found: ${farmer.name} (ID: ${farmer.id})',
+            name: 'AuthService',
+          );
+          // For demo purposes, accept any OTP for existing farmers
+          isValid = true;
+          userData = {
+            'id': farmer.id,
+            'name': farmer.name,
+            'mobile_number': farmer.contactNumber,
+            'role': role,
+            'village': farmer.village,
+            'district': farmer.district,
+          };
+          developer.log('Farmer login successful', name: 'AuthService');
+        } else {
+          developer.log(
+            'No farmer found with mobile number: $mobileNumber',
+            name: 'AuthService',
+          );
+        }
       }
 
       if (isValid) {
@@ -100,6 +95,7 @@ class AuthService {
           'success': true,
           'message': 'Login successful',
           'userData': userData,
+          'token': userData['token'], // Include token if available
         };
       } else {
         developer.log('Login failed: Invalid credentials', name: 'AuthService');
@@ -406,8 +402,28 @@ class AuthService {
       final userData = loginData['data'];
       final token = loginData['token'];
 
+      developer.log('Extracted role: $role', name: 'AuthService');
+      developer.log('Extracted userData: $userData', name: 'AuthService');
+      developer.log('Extracted token: $token', name: 'AuthService');
+
+      // Create complete user data object with all fields
+      final completeUserData = Map<String, dynamic>.from(userData);
+      
+      // Ensure all verifier-specific fields are preserved
+      if (role == 'verifier') {
+        // Add any missing fields with defaults
+        completeUserData['role'] = role;
+        completeUserData['token'] = token;
+        completeUserData['email'] = userData['email'] ?? '';
+        completeUserData['age'] = userData['age'] ?? 0;
+        completeUserData['allocatedTaluka'] = userData['allocatedTaluka'] ?? [];
+        completeUserData['farmerId'] = userData['farmerId'] ?? [];
+        completeUserData['cropId'] = userData['cropId'] ?? [];
+        completeUserData['talukaOfficerId'] = userData['talukaOfficerId'] ?? '';
+      }
+
       // Use SharedPrefsService for consistent data storage
-      await SharedPrefsService.saveUserData(userData, role);
+      await SharedPrefsService.saveUserData(completeUserData, role);
       if (token != null) {
         await SharedPrefsService.saveToken(token);
       }
@@ -417,7 +433,7 @@ class AuthService {
         await _saveFarmerToDatabase(userData);
       }
 
-      developer.log('User data saved successfully', name: 'AuthService');
+      developer.log('Complete user data saved to SharedPreferences', name: 'AuthService');
     } catch (e) {
       developer.log('Error saving user data: $e', name: 'AuthService');
       rethrow;

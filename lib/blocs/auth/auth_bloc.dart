@@ -83,7 +83,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             }
           }
           
+          // Get userId after saving - give it a moment to save
+          await Future.delayed(Duration(milliseconds: 100));
           final userId = SharedPrefsService.getUserId() ?? result['userData']['id'] ?? '';
+          developer.log('Final userId for authentication: $userId', name: 'AuthBloc');
           emit(Authenticated(role: event.role, userId: userId));
         } else {
           developer.log('Login failed: ${result['message']}', name: 'AuthBloc');

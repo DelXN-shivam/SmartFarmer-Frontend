@@ -24,16 +24,14 @@ import 'screens/common/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Ensure SharedPreferences is properly initialized
+  // Initialize SharedPreferences
   // try {
   //   await SharedPrefsService.init();
-  //   // Test SharedPrefs in release mode
   //   if (kReleaseMode) {
   //     await ReleaseDebugHelper.testSharedPrefs();
   //   }
   // } catch (e) {
   //   print('SharedPrefs init failed: $e');
-  //   // Continue anyway, will be handled in individual calls
   // }
   
   runApp(const SmartFarmerApp());
@@ -94,11 +92,13 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
           builder: (context) {
             if (widget.authState is Authenticated) {
               final authState = widget.authState as Authenticated;
-              switch (authState.role) {
+              switch (authState.role.toLowerCase()) {
                 case 'farmer':
                   return const FarmerDashboardScreen();
                 case 'verifier':
                   return const VerifierDashboardScreen();
+                case 'admin':
+                  return const FarmerDashboardScreen(); // TODO: Add AdminDashboardScreen
                 default:
                   return const FarmerDashboardScreen();
               }

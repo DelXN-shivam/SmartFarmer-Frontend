@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smart_farmer/models/farmer.dart';
 import 'farmer_event.dart';
 import 'farmer_state.dart';
 import '../../services/database_service.dart';
@@ -72,6 +73,57 @@ class FarmerBloc extends Bloc<FarmerEvent, FarmerState> {
         }
       } catch (e) {
         emit(FarmerError('An error occurred: $e'));
+      }
+    });
+
+    on<LoadFarmerProfile>((event, emit) async {
+      emit(FarmerLoading());
+      try {
+        // Try to load from SharedPreferences first
+        final userData = SharedPrefsService.getUserData();
+        if (userData != null) {
+          // Convert userData to Farmer model if possible
+          final farmer = Farmer(
+            id: userData['_id'] ?? userData['id'] ?? '',
+            name: userData['name'] ?? '',
+            contactNumber:
+                userData['contact'] ?? userData['contact_number'] ?? '',
+            aadhaarNumber:
+                userData['aadhaarNumber'] ?? userData['aadhaar_number'] ?? '',
+            village: userData['village'] ?? '',
+            landmark: userData['landMark'] ?? userData['landmark'] ?? '',
+            taluka: userData['taluka'] ?? '',
+            district: userData['district'] ?? '',
+            pincode: userData['pincode'] ?? '',
+            createdAt:
+                DateTime.tryParse(userData['createdAt'] ?? '') ??
+                DateTime.now(),
+            updatedAt:
+                DateTime.tryParse(userData['updatedAt'] ?? '') ??
+                DateTime.now(),
+          );
+          emit(SingleFarmerLoaded(farmer));
+          return;
+        }
+
+        // Fallback to database
+        final farmer = await DatabaseService.getFarmerById(event.farmerId);
+        if (farmer != null) {
+          emit(SingleFarmerLoaded(farmer));
+        } else {
+          // Try API as last resort
+          final apiFarmer = await DatabaseService.fetchFarmerByIdFromApi(
+            event.farmerId,
+          );
+          if (apiFarmer != null) {
+            await SharedPrefsService.saveFarmerData(apiFarmer.toMap());
+            emit(SingleFarmerLoaded(apiFarmer));
+          } else {
+            emit(FarmerError('Farmer profile not found'));
+          }
+        }
+      } catch (e) {
+        emit(FarmerError('Failed to load profile: $e'));
       }
     });
   }

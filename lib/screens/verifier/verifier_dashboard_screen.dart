@@ -37,21 +37,118 @@ class _VerifierDashboardScreenState extends State<VerifierDashboardScreen>
   void initState() {
     super.initState();
     _setupAnimations();
+    _debugSharedPrefs(); // Debug what's in SharedPrefs
     _loadVerifierData(); // This will trigger crop loading after data is loaded
+  }
+  
+  Future<void> _debugSharedPrefs() async {
+    try {
+      // Initialize SharedPrefs if not already done
+      await SharedPrefsService.init();
+      
+      final prefs = await SharedPrefsService.getPrefs();
+      final keys = prefs.getKeys();
+      developer.log('All SharedPrefs keys: $keys', name: 'VerifierDashboard');
+      
+      for (String key in keys) {
+        final value = prefs.get(key);
+        developer.log('$key: $value', name: 'VerifierDashboard');
+      }
+      
+      final userData = SharedPrefsService.getUserData();
+      developer.log('getUserData result: $userData', name: 'VerifierDashboard');
+      
+      final userId = SharedPrefsService.getUserId();
+      developer.log('getUserId result: $userId', name: 'VerifierDashboard');
+      
+      final userRole = SharedPrefsService.getUserRole();
+      developer.log('getUserRole result: $userRole', name: 'VerifierDashboard');
+      
+      final isLoggedIn = SharedPrefsService.isLoggedIn();
+      developer.log('isLoggedIn result: $isLoggedIn', name: 'VerifierDashboard');
+    } catch (e) {
+      developer.log('Debug SharedPrefs error: $e', name: 'VerifierDashboard');
+    }
   }
 
   Future<void> _loadVerifierData() async {
-    final prefs = await SharedPrefsService.getPrefs();
-    final userData = prefs.getString('user_data');
-    if (userData != null) {
-      final decodedData = SharedPrefsService.decodeJson(userData);
-      if (decodedData != null) {
+    try {
+      // Try multiple ways to get user data
+      final userData = SharedPrefsService.getUserData();
+      if (userData != null) {
         setState(() {
-          verifierData = Map<String, dynamic>.from(decodedData);
+          verifierData = Map<String, dynamic>.from(userData);
         });
-        // Fetch crops after verifier data is loaded
+        developer.log('Verifier data loaded: $verifierData', name: 'VerifierDashboard');
         _fetchVerificationCrops();
+        return;
       }
+      
+      // Fallback: try direct SharedPreferences access
+      final prefs = await SharedPrefsService.getPrefs();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString != null) {
+        final decodedData = SharedPrefsService.decodeJson(userDataString);
+        if (decodedData != null) {
+          setState(() {
+            verifierData = Map<String, dynamic>.from(decodedData);
+          });
+          developer.log('Verifier data loaded from fallback: $verifierData', name: 'VerifierDashboard');
+          _fetchVerificationCrops();
+          return;
+        }
+      }
+      
+      // If no data found, set empty data to stop loading
+      developer.log('No verifier data found, setting empty data', name: 'VerifierDashboard');
+      setState(() {
+        verifierData = {
+          '_id': '',
+          'name': 'Verifier',
+          'email': '',
+          'contact': '',
+          'aadhaarNumber': '',
+          'age': 0,
+          'village': '',
+          'landMark': '',
+          'taluka': '',
+          'allocatedTaluka': [],
+          'district': '',
+          'state': '',
+          'pincode': '',
+          'role': 'verifier',
+          'farmerId': [],
+          'cropId': [],
+          'talukaOfficerId': '',
+          'createdAt': '',
+          'updatedAt': '',
+        };
+      });
+    } catch (e) {
+      developer.log('Error loading verifier data: $e', name: 'VerifierDashboard');
+      setState(() {
+        verifierData = {
+          '_id': '',
+          'name': 'Verifier',
+          'email': '',
+          'contact': '',
+          'aadhaarNumber': '',
+          'age': 0,
+          'village': '',
+          'landMark': '',
+          'taluka': '',
+          'allocatedTaluka': [],
+          'district': '',
+          'state': '',
+          'pincode': '',
+          'role': 'verifier',
+          'farmerId': [],
+          'cropId': [],
+          'talukaOfficerId': '',
+          'createdAt': '',
+          'updatedAt': '',
+        };
+      });
     }
   }
 
@@ -298,7 +395,19 @@ class _VerifierDashboardScreenState extends State<VerifierDashboardScreen>
         child: Transform.translate(
           offset: Offset(0, _slideAnimation.value),
           child: verifierData == null
-              ? const Center(child: CircularProgressIndicator())
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    const Text('Loading verifier data...'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadVerifierData,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                )
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(

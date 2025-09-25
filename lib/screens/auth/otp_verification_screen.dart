@@ -23,7 +23,6 @@ class MobileOTPScreen extends StatefulWidget {
 
 class _MobileOTPScreenState extends State<MobileOTPScreen>
     with TickerProviderStateMixin {
-  String selectedRole = AppConstants.roleFarmer;
   final TextEditingController _mobileController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -212,15 +211,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
                               ),
                             ),
                             SizedBox(height: isSmallScreen ? 20 : 32),
-                            // Role Selection (only show before OTP is sent)
-                            if (!_showOTPField)
-                              // _buildRoleSelection(
-                              //   langCode,
-                              //   isSmallScreen,
-                              //   isPortrait,
-                              // ),
-                              if (!_showOTPField)
-                                SizedBox(height: isSmallScreen ? 16 : 24),
+
                             // Mobile/OTP Form
                             Form(
                               key: _formKey,
@@ -512,6 +503,8 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
     // Implementation depends on how you manage the 6 separate fields
   }
 
+
+
   Map<String, dynamic>? _loginResponse;
 
   Future<void> _sendOTP() async {
@@ -529,6 +522,7 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
   }
 
   void _loginWithContactInBackground(String contact) {
+    // Call API to get user data and determine role
     AuthService.loginWithContact(contact)
         .then((result) {
           if (result['success'] && mounted) {
@@ -553,10 +547,36 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
         await _waitForLoginResponse();
       }
 
-      // If still no response after waiting, navigate to registration
+      // If still no response, try farmer login or show registration
       if (_loginResponse == null) {
+        // Try farmer login from local database
+        final farmerResult = await AuthService.login(
+          mobileNumber: _mobileController.text.trim(),
+          otp: _otpController.text.trim(),
+          role: AppConstants.roleFarmer,
+        );
+        
+        if (farmerResult['success']) {
+          final userData = farmerResult['userData'];
+          final role = userData['role'];
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  farmerResult['message'] ?? 'Login successful!',
+                  overflow: TextOverflow.ellipsis,
+                ),
+                backgroundColor: AppTheme.successColor,
+              ),
+            );
+            _navigateBasedOnRole(role);
+          }
+          return;
+        }
+        
+        // No user found, show registration
         if (mounted) {
-          setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -577,8 +597,10 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
         return;
       }
 
+      // Process API login response
       final role = _loginResponse!['role'];
       final userData = _loginResponse!['data'];
+      final token = _loginResponse!['token'];
 
       log('Login successful for role: $role');
       log('User data: $userData');
@@ -587,6 +609,14 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
       await AuthService.saveUserData(_loginResponse!);
 
       log('User data saved to SharedPreferences');
+      
+      // Verify the data was saved correctly
+      final savedUserId = SharedPrefsService.getUserId();
+      final savedUserData = SharedPrefsService.getUserData();
+      log('Verification - Saved userId: $savedUserId');
+      log('Verification - Saved userData: $savedUserData');
+      
+      log('Navigating based on role: $role');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -604,13 +634,12 @@ class _MobileOTPScreenState extends State<MobileOTPScreen>
       log('Login error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            // content: Text('Login failed: ${e.toString()}'),
+          const SnackBar(
             content: Text(
-              'Login failed: an internal error occured',
+              'Login failed: an internal error occurred',
               overflow: TextOverflow.ellipsis,
             ),
-            // backgroundColor: AppTheme.errorColor,
+            backgroundColor: Colors.red,
           ),
         );
       }

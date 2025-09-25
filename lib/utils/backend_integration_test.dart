@@ -17,7 +17,7 @@ class BackendIntegrationTest {
     final testData = {
       "applicationStatus": "verified",
       "verifiedImages": ["https://test-image-url.com/image1.jpg"],
-      "rejectedReason": "Test rejection reason",
+      "rejectedReason": "Sample rejection reason",
       "verifiedTime": DateTime.now().toIso8601String(),
     };
     
@@ -147,7 +147,7 @@ class BackendIntegrationTest {
             "https://res.cloudinary.com/dijjftmm8/image/upload/v1234567890/smart_farmer/verification_images/test2.jpg"
           ],
           "verifiedTime": DateTime.now().toIso8601String(),
-          "verifierId": "test_verifier_id"
+          "verifierId": "sample_verifier_id"
         };
         
         final updateResponse = await http.patch(
@@ -186,7 +186,7 @@ class BackendIntegrationTest {
         // Step 4: Test rejection flow
         final rejectionData = {
           "applicationStatus": "rejected",
-          "rejectedReason": "Test rejection reason - crop quality not meeting standards"
+          "rejectedReason": "Sample rejection reason - crop quality not meeting standards"
         };
         
         final rejectResponse = await http.patch(

@@ -10,7 +10,7 @@ class ReleaseDebugHelper {
       developer.log('Language test: $lang', name: 'ReleaseDebug');
       
       // Test basic data storage
-      final testData = {'id': 'farmer123', 'name': 'Demo Farmer'};
+      final testData = {'id': 'farmer123', 'name': 'Sample Farmer'};
       await SharedPrefsService.saveUserData(testData, 'farmer');
       
       final savedData = SharedPrefsService.getUserData();
